@@ -1,0 +1,99 @@
+[gd_scene load_steps=12 format=3 uid="uid://b1g0d0t41st4rt"]
+
+[ext_resource type="Script" path="res://scripts/player_controller_3d.gd" id="1_player"]
+[ext_resource type="Script" path="res://scripts/simple_enemy_ai.gd" id="2_enemy"]
+[ext_resource type="Script" path="res://scripts/item_pickup.gd" id="3_item"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
+sky_top_color = Color(0.247059, 0.388235, 0.611765, 1)
+sky_horizon_color = Color(0.647059, 0.658824, 0.678431, 1)
+
+[sub_resource type="Sky" id="Sky_1"]
+sky_material = SubResource("ProceduralSkyMaterial_1")
+
+[sub_resource type="Environment" id="Environment_1"]
+background_mode = 2
+sky = SubResource("Sky_1")
+tonemap_mode = 2
+glow_enabled = true
+
+[sub_resource type="BoxMesh" id="BoxMesh_floor"]
+size = Vector3(50, 1, 50)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_floor"]
+size = Vector3(50, 1, 50)
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_player"]
+radius = 0.4
+height = 1.8
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_player"]
+radius = 0.4
+height = 1.8
+
+[sub_resource type="BoxMesh" id="BoxMesh_enemy"]
+size = Vector3(1, 1.8, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_enemy"]
+size = Vector3(1, 1.8, 1)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_item"]
+top_radius = 0.3
+bottom_radius = 0.3
+height = 0.2
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_item"]
+radius = 0.6
+
+[node name="Main" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_1")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866025, -0.353553, 0.353553, 0, 0.707107, 0.707107, -0.5, -0.612372, 0.612372, 0, 15, 0)
+shadow_enabled = true
+
+[node name="Floor" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+mesh = SubResource("BoxMesh_floor")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="Floor"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Floor/StaticBody3D"]
+shape = SubResource("BoxShape3D_floor")
+
+[node name="Player" type="CharacterBody3D" parent="." node_paths=PackedStringArray("node_kamera")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 5)
+script = ExtResource("1_player")
+node_kamera = NodePath("Camera3D")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Player"]
+mesh = SubResource("CapsuleMesh_player")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Player"]
+shape = SubResource("CapsuleShape3D_player")
+
+[node name="Camera3D" type="Camera3D" parent="Player"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+
+[node name="Enemy" type="CharacterBody3D" parent="." node_paths=PackedStringArray("player_target")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -8)
+script = ExtResource("2_enemy")
+player_target = NodePath("../Player")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Enemy"]
+mesh = SubResource("BoxMesh_enemy")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Enemy"]
+shape = SubResource("BoxShape3D_enemy")
+
+[node name="CollectibleKey" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0.6, 0)
+script = ExtResource("3_item")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="CollectibleKey"]
+mesh = SubResource("CylinderMesh_item")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="CollectibleKey"]
+shape = SubResource("SphereShape3D_item")

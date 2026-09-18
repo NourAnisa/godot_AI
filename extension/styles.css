@@ -1,0 +1,292 @@
+/* Godot AI Asisten Mahasiswa Floating Widget */
+
+#godot-ai-widget {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999999;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #f1f5f9;
+  font-size: 13px;
+  user-select: none;
+}
+
+#godot-ai-widget * {
+  box-sizing: border-box;
+}
+
+.gai-card {
+  background: rgba(15, 23, 42, 0.96);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 14px;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.6), 0 0 20px rgba(99, 102, 241, 0.15);
+  width: 340px;
+  overflow: hidden;
+  transition: all 0.25s ease;
+}
+
+.gai-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: grab;
+}
+
+.gai-header:active {
+  cursor: grabbing;
+}
+
+.gai-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 13px;
+  color: #c7d2fe;
+}
+
+.gai-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.gai-badge-synced {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+.gai-badge-behind {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+.gai-badge-ahead {
+  background: rgba(99, 102, 241, 0.2);
+  color: #818cf8;
+  border: 1px solid rgba(99, 102, 241, 0.4);
+}
+.gai-badge-offline {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.gai-btn-toggle {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  font-size: 12px;
+}
+.gai-btn-toggle:hover { color: #fff; }
+
+.gai-body {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+.gai-collapsed .gai-body {
+  display: none;
+}
+
+/* Tabs */
+.gai-tabs {
+  display: flex;
+  background: rgba(30, 41, 59, 0.7);
+  border-radius: 8px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.gai-tab {
+  flex: 1;
+  padding: 6px 8px;
+  border: none;
+  background: none;
+  color: #94a3b8;
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s;
+}
+
+.gai-tab.active {
+  background: #4f46e5;
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.4);
+}
+
+/* Prompt Assistant List */
+.gai-prompts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gai-prompt-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: #e2e8f0;
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
+}
+
+.gai-prompt-btn:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.4);
+  color: #fff;
+}
+
+.gai-prompt-icon {
+  font-size: 14px;
+}
+
+/* Error Debugger Assistant */
+.gai-error-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gai-error-textarea {
+  width: 100%;
+  height: 70px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 6px;
+  color: #f87171;
+  padding: 6px 8px;
+  font-family: Consolas, monospace;
+  font-size: 11px;
+  resize: vertical;
+}
+
+.gai-error-textarea::placeholder {
+  color: #64748b;
+}
+
+.gai-btn-fix {
+  background: #dc2626;
+  color: #fff;
+  border: none;
+  padding: 7px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.gai-btn-fix:hover { background: #b91c1c; }
+
+/* Git Section */
+.gai-git-info {
+  background: rgba(30, 41, 59, 0.5);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 11.5px;
+  color: #94a3b8;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gai-git-row {
+  display: flex;
+  justify-content: space-between;
+}
+
+.gai-git-val {
+  color: #f1f5f9;
+  font-weight: 500;
+}
+
+.gai-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.gai-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.gai-btn-pull { background: #10b981; color: #fff; }
+.gai-btn-pull:hover { background: #059669; }
+
+.gai-btn-push { background: #6366f1; color: #fff; }
+.gai-btn-push:hover { background: #4f46e5; }
+
+.gai-btn-sync {
+  grid-column: span 2;
+  background: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.gai-btn-sync:hover { background: rgba(255, 255, 255, 0.15); color: #fff; }
+
+.gai-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: rgba(15, 23, 42, 0.8);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 11px;
+  color: #64748b;
+}
+
+/* Toast */
+#gai-toast {
+  position: fixed;
+  bottom: 90px;
+  right: 24px;
+  z-index: 10000000;
+  background: #4f46e5;
+  color: white;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 500;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.25s ease;
+}
+
+#gai-toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}

@@ -1,0 +1,8 @@
+{
+    "port":  32124,
+    "gitPath":  "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\IDE\\CommonExtensions\\Microsoft\\TeamFoundation\\Team Explorer\\Git\\cmd\\git.exe",
+    "localPath":  "C:\\Users\\Nor Anisa\\godot_AI",
+    "autoSyncInterval":  10,
+    "repoUrl":  "https://github.com/NourAnisa/godot_AI.git",
+    "autoSync":  true
+}
