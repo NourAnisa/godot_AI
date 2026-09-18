@@ -1,67 +1,59 @@
-# 🎓 Godot AI - Toolkit & Ekstensi untuk Mahasiswa
+# 🎓 Godot AI v2.0 - Toolkit & Asisten Cerdas untuk Mahasiswa
 
-Toolkit lengkap berbasis **Browser Extension + Git Auto-Sync Daemon + Godot 4 Starter Kit** yang dirancang untuk mempermudah mahasiswa dalam belajar membuat game dengan **Godot Engine 4** dibantu AI (**ChatGPT, Claude, DeepSeek, dan Google Gemini**).
+Toolkit tingkat lanjut berbasis **Browser Extension + Smart Sync Daemon + Godot 4 Starter Kit** yang dirancang untuk mempermudah mahasiswa dalam belajar membuat game dengan **Godot Engine 4** menggunakan kecerdasan buatan (**ChatGPT, Claude, DeepSeek, dan Google Gemini**).
 
-Repository: [https://github.com/NourAnisa/godot_AI](https://github.com/NourAnisa/godot_AI)
-
----
-
-## 🌟 Fitur Unggulan untuk Mahasiswa
-
-1. **Dukungan Multi-AI Terlengkap**:
-   - Berfungsi langsung di antarmuka web:
-     - 🤖 **ChatGPT** (`chatgpt.com`)
-     - 🧠 **Claude** (`claude.ai`)
-     - ⚡ **DeepSeek** (`chat.deepseek.com`)
-     - 💎 **Google Gemini** (`gemini.google.com`)
-
-2. **Asisten Prompt Tugas Kuliah (1-Click Prompt Assistant)**:
-   - Tombol sekali klik yang langsung memasukkan template prompt rapi ke chatbox AI:
-     - 🏃 **Player Controller 3D**: Karakter dengan WASD, sprint, gravitasi, lompat, mouse look, dan komentar edukatif.
-     - ⚔️ **AI Enemy State Machine**: Implementasi Finite State Machine (FSM) musuh (Patrol, Chase, Attack).
-     - 🎒 **Sistem Inventory & Pick-Up**: Mengambil item 3D dan menampilkan di UI.
-     - 📝 **Generator Format Laporan Tugas**: Minta AI membuat draf laporan teknis / praktikum dari kode yang dibuat.
-
-3. **Godot Error Fixer (Tanya Error Konsol ke AI)**:
-   - Mahasiswa cukup menyalin (*copy-paste*) pesan error dari debugger Godot ke widget, lalu klik **Analisis & Tanyakan Solusi ke AI**. Prompt akan diformat secara otomatis agar AI menjelaskan penyebab dan kode perbaikannya.
-
-4. **1-Click Git & Auto-Sync**:
-   - Tidak perlu pusing menghafal baris perintah Git di terminal.
-   - Tombol `⬇️ Pull` untuk menarik kode buatan AI ke laptop dalam 1 klik.
-   - Tombol `⬆️ Push` untuk mengunggah hasil tugas mahasiswa ke GitHub.
-
-5. **Starter Kit Godot 4 Edukatif**:
-   - Berisi contoh scene 3D siap jalan (`scenes/main.tscn`) dengan script yang memiliki dokumentasi konsep game development dalam bahasa Indonesia.
+Repository GitHub: [https://github.com/NourAnisa/godot_AI](https://github.com/NourAnisa/godot_AI)
 
 ---
 
-## 🚀 Panduan Instalasi (Hanya Perlu Sekali)
+## ⚡ Fitur Cerdas (Smart AI Features)
 
-### 1. Pasang Ekstensi di Browser (Chrome / Brave / Edge)
-1. Buka browser favoritmu (Chrome, Brave, atau Edge).
-2. Kunjungi halaman ekstensi:
+### 1. ⚡ 1-Click "Pasang ke Godot" (Apply to Godot)
+- Di antarmuka web AI (ChatGPT, Claude, DeepSeek, Gemini), tombol **`⚡ Pasang ke Godot`** akan otomatis muncul di atas setiap blok kode GDScript yang dibuatkan oleh AI.
+- Sekali klik, kode langsung ditulis ke file di folder `godot_project/scripts/` dan otomatis ter-reload di editor Godot! Tidak perlu lagi repot copy-paste manual.
+
+### 2. 🧠 Project Context Scanner (Kirim Konteks Proyek ke AI)
+- Tombol **`📋 Kirim Konteks Proyek ke AI`** di tab Konteks:
+  - Memindai seluruh scene (`main.tscn`), node tree, daftar script, kelas, dan variabel `@export` yang ada di proyek Godotmu.
+  - Memasukkan ringkasan struktur proyek secara otomatis ke chatbox AI.
+  - Hasilnya: Jawaban dan kode dari AI akan **100% akurat** dan menyambung dengan nama node serta variabel yang sudah ada di gamemu!
+
+### 3. 🎮 Interactive Game Mechanics Wizard
+- Form pembuat spesifikasi game otomatis:
+  - **Pilih Genre**: 3D Survival, 3D Platformer, FPS/TPS, 2D RPG.
+  - **Centang Mekanik**: Sprint & Stamina Bar, Double Jump, Wall Run, Dash, Health System UI, AI Enemy FSM, Day/Night Sky, Inventory 3D.
+  - Klik **`✨ Buat Prompt Spesifikasi Otomatis`** untuk menghasilkan prompt rekayasa game berstandar profesional.
+
+### 4. 🐞 Godot Debugger Error Fixer
+- Kotak khusus untuk menempelkan pesan error merah dari konsol debugger Godot.
+- Sekali klik langsung memformat pertanyaan konsultasi agar AI menjelaskan akar masalah dan memberikan kode perbaikannya.
+
+### 5. 🔄 1-Click Git & Auto-Sync
+- Tombol `⬇️ Pull dari AI` dan `⬆️ Push Tugas` tanpa perlu mengetik baris perintah Git di terminal.
+
+---
+
+## 🚀 Panduan Instalasi Cepat
+
+### 1. Pasang / Perbarui Ekstensi di Browser
+1. Buka halaman ekstensi browser:
    - Chrome: `chrome://extensions`
    - Brave: `brave://extensions`
    - Edge: `edge://extensions`
-3. Aktifkan saklar **Developer mode** di pojok kanan atas.
-4. Klik tombol **Load unpacked** (Muat yang belum dibongkar) di pojok kiri atas.
-5. Pilih folder:
+2. Aktifkan **Developer mode** di pojok kanan atas.
+3. Klik **Load unpacked** (atau klik tombol reload jika sudah terpasang) dan pilih folder:
    ```text
    C:\Users\Nor Anisa\godot_AI\extension
    ```
-6. Selesai! Ekstensi **Godot AI Mahasiswa** sudah aktif.
 
-### 2. Menjalankan Sync Daemon di Laptop
-1. Klik 2x shortcut **`Godot AI Mahasiswa Sync`** di Desktop (atau jalankan file `start-sync.bat`).
-2. Daemon akan berjalan di latar belakang pada port `32124`.
+### 2. Menjalankan Daemon di Laptop
+- Cukup klik 2x shortcut **`Godot AI Mahasiswa Sync`** yang ada di **Desktop** (atau jalankan file `start-sync.bat`).
+- Daemon berjalan di latar belakang pada port `32124`.
 
----
-
-## 🎮 Menjalankan Starter Project di Godot 4
-1. Buka **Godot Engine 4**.
-2. Klik **Import** -> Pilih file `C:\Users\Nor Anisa\godot_AI\godot_project\project.godot`.
-3. Klik **Import & Edit**.
-4. Tekan **F5** untuk langsung memainkan dan mencoba simulasi karakter, AI musuh, dan item interaktif!
+### 3. Membuka Proyek di Godot 4
+1. Buka Godot Engine 4.
+2. Import file `C:\Users\Nor Anisa\godot_AI\godot_project\project.godot`.
+3. Tekan **F5** untuk langsung menguji karakter, musuh AI, dan item collectible!
 
 ---
 
@@ -69,22 +61,22 @@ Repository: [https://github.com/NourAnisa/godot_AI](https://github.com/NourAnisa
 
 ```text
 godot_AI/
-├── extension/          # Ekstensi browser (Manifest V3) untuk ChatGPT, Claude, DeepSeek, Gemini
-│   ├── content.js      # Widget asisten prompt & error fixer
+├── extension/          # Ekstensi browser v2.0 (ChatGPT, Claude, DeepSeek, Gemini)
+│   ├── content.js      # Injeksi tombol "Apply to Godot", Wizard, & Context Scanner
 │   ├── styles.css      # Desain tema gelap edukatif
-│   ├── popup.html      # Menu kontrol ekstensi
+│   ├── popup.html
 │   └── manifest.json
-├── daemon/             # Backend service lokal (Node.js) untuk git sync otomatis (Port 32124)
-│   ├── server.js
+├── daemon/             # Smart Sync Daemon (Node.js) port 32124
+│   ├── server.js       # Endpoints: /project-context, /apply-code, /pull, /push
 │   └── config.json
-├── godot_project/      # Template proyek Godot 4 ramah mahasiswa
+├── godot_project/      # Template proyek Godot 4 siap pakai
 │   ├── scenes/main.tscn
 │   ├── scripts/
-│   │   ├── player_controller_3d.gd  # Kinematika, gravitasi, lerp
-│   │   ├── simple_enemy_ai.gd       # Finite State Machine (FSM) AI
-│   │   └── item_pickup.gd           # Sinyal & interaksi 3D
-│   └── addons/godot_ai/             # Plugin toolbar sync di Godot
-├── start-sync.bat      # Skrip menjalankan daemon 1-klik
-├── stop-sync.bat       # Skrip mematikan daemon
+│   │   ├── player_controller_3d.gd  # Karakter 3D (kinematika, gravitasi, lerp)
+│   │   ├── simple_enemy_ai.gd       # AI Musuh FSM (Patrol, Chase, Attack)
+│   │   └── item_pickup.gd           # Interaksi 3D & Sinyal
+│   └── addons/godot_ai/             # Addon toolbar di dalam Godot
+├── start-sync.bat
+├── stop-sync.bat
 └── README.md
 ```

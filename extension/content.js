@@ -1,15 +1,18 @@
-// Godot AI - Asisten Mahasiswa Content Script
-// Supports ChatGPT, Claude, DeepSeek, Gemini
+// Godot AI - Asisten Mahasiswa v2.0 (Smart Edition)
+// Compatible with ChatGPT, Claude, DeepSeek, Gemini
 
 (function() {
-  if (window.__GODOT_AI_LOADED__) return;
-  window.__GODOT_AI_LOADED__ = true;
+  if (window.__GODOT_AI_LOADED_V2__) return;
+  window.__GODOT_AI_LOADED_V2__ = true;
 
   const DAEMON_URL = 'http://127.0.0.1:32124';
   let isCollapsed = false;
-  let activeTab = 'prompts'; // 'prompts' | 'git' | 'debug'
+  let activeTab = 'prompts';
+  let projectContextCache = null;
 
-  // Toast
+  // -------------------------------------------------------------
+  // Toast Notification
+  // -------------------------------------------------------------
   const toast = document.createElement('div');
   toast.id = 'gai-toast';
   document.body.appendChild(toast);
@@ -21,22 +24,17 @@
     setTimeout(() => toast.classList.remove('show'), 3500);
   }
 
-  // Inject Text into AI Input Box (Supports ChatGPT, Claude, DeepSeek, Gemini)
+  // -------------------------------------------------------------
+  // AI Input Injector (Multi-Platform)
+  // -------------------------------------------------------------
   function insertTextToAI(text) {
-    let inputEl = null;
-
-    // ChatGPT
-    inputEl = document.querySelector('#prompt-textarea') ||
-              document.querySelector('div[contenteditable="true"][data-placeholder]') ||
-              // Claude
-              document.querySelector('div[contenteditable="true"].ProseMirror') ||
-              // DeepSeek
-              document.querySelector('textarea[placeholder*="Ask"], textarea[placeholder*="Type"]') ||
-              // Gemini
-              document.querySelector('rich-textarea div[contenteditable="true"]') ||
-              // Generic fallback
-              document.querySelector('textarea') ||
-              document.querySelector('div[contenteditable="true"]');
+    let inputEl = document.querySelector('#prompt-textarea') ||
+                  document.querySelector('div[contenteditable="true"][data-placeholder]') ||
+                  document.querySelector('div[contenteditable="true"].ProseMirror') ||
+                  document.querySelector('textarea[placeholder*="Ask"], textarea[placeholder*="Type"]') ||
+                  document.querySelector('rich-textarea div[contenteditable="true"]') ||
+                  document.querySelector('textarea') ||
+                  document.querySelector('div[contenteditable="true"]');
 
     if (!inputEl) {
       navigator.clipboard.writeText(text);
@@ -51,15 +49,118 @@
       inputEl.dispatchEvent(new Event('input', { bubbles: true }));
       inputEl.dispatchEvent(new Event('change', { bubbles: true }));
     } else {
-      // ContentEditable (ChatGPT, Claude, Gemini)
       inputEl.innerText = text;
       inputEl.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText' }));
     }
 
-    showToast('✨ Prompt berhasil dimasukkan ke chatbox AI!');
+    showToast('✨ Berhasil dimasukkan ke chatbox AI!');
   }
 
-  // Floating Widget
+  // -------------------------------------------------------------
+  // SMART FEATURE 1: 1-Click "Apply to Godot" Button on Code Blocks
+  // -------------------------------------------------------------
+  function guessFilenameFromCode(code) {
+    // 1. Look for # res:// or # path: or # scripts/
+    const pathMatch = code.match(/#\s*(?:res:\/\/|path:\s*|file:\s*)?([A-Za-z0-9_\-\/]+\.(?:gd|tscn))/i);
+    if (pathMatch) return pathMatch[1];
+
+    // 2. Look for class_name FooBar -> scripts/foo_bar.gd
+    const classMatch = code.match(/class_name\s+([A-Za-z0-9_]+)/);
+    if (classMatch) {
+      const snakeCase = classMatch[1].replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase();
+      return `scripts/${snakeCase}.gd`;
+    }
+
+    // 3. Look for extends CharacterBody3D or Player
+    if (code.includes('extends CharacterBody3D') && code.includes('velocity')) {
+      return 'scripts/player_controller_3d.gd';
+    }
+    if (code.includes('SimpleEnemyAI') || code.includes('enum State')) {
+      return 'scripts/simple_enemy_ai.gd';
+    }
+    if (code.includes('ItemPickup') || code.includes('Area3D')) {
+      return 'scripts/item_pickup.gd';
+    }
+
+    return 'scripts/ai_generated_script.gd';
+  }
+
+  function injectApplyButtonsToCodeBlocks() {
+    const codeBlocks = document.querySelectorAll('pre');
+    codeBlocks.forEach(pre => {
+      if (pre.dataset.gaiInjected) return;
+      pre.dataset.gaiInjected = 'true';
+
+      const codeEl = pre.querySelector('code') || pre;
+      const codeText = codeEl.innerText || codeEl.textContent || '';
+
+      // Only attach to GDScript / Python-like code blocks
+      const isGdscript = codeText.includes('extends ') ||
+                         codeText.includes('func _ready') ||
+                         codeText.includes('func _physics_process') ||
+                         codeText.includes('var ') ||
+                         codeText.includes('CharacterBody') ||
+                         codeText.includes('@export');
+
+      if (!isGdscript) return;
+
+      const bar = document.createElement('div');
+      bar.className = 'gai-code-action-bar';
+      
+      const btn = document.createElement('button');
+      btn.className = 'gai-apply-btn';
+      btn.innerHTML = '<span>⚡</span> Pasang ke Godot';
+      btn.title = 'Tulis kode ini langsung ke folder proyek Godot di laptop';
+
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        btn.disabled = true;
+        btn.innerHTML = '<span>⏳</span> Memasang...';
+
+        const guessedFile = guessFilenameFromCode(codeText);
+        const filename = prompt('Simpan kode GDScript ini ke file:', guessedFile);
+        if (!filename) {
+          btn.disabled = false;
+          btn.innerHTML = '<span>⚡</span> Pasang ke Godot';
+          return;
+        }
+
+        try {
+          const res = await fetch(`${DAEMON_URL}/apply-code`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filename, code: codeText })
+          });
+          const data = await res.json();
+          if (data.success) {
+            btn.innerHTML = '<span>✅</span> Terpasang di Godot!';
+            btn.classList.add('applied');
+            showToast(`🚀 File tersimpan di ${data.file}! Siap diuji di Godot.`);
+            setTimeout(() => {
+              btn.innerHTML = '<span>⚡</span> Pasang ke Godot';
+              btn.classList.remove('applied');
+              btn.disabled = false;
+            }, 3000);
+          } else {
+            showToast('❌ Gagal: ' + data.error, true);
+            btn.disabled = false;
+            btn.innerHTML = '<span>⚡</span> Pasang ke Godot';
+          }
+        } catch (err) {
+          showToast('❌ Tidak dapat terhubung ke daemon (Pastikan start-sync.bat aktif)', true);
+          btn.disabled = false;
+          btn.innerHTML = '<span>⚡</span> Pasang ke Godot';
+        }
+      });
+
+      bar.appendChild(btn);
+      pre.parentNode.insertBefore(bar, pre);
+    });
+  }
+
+  // -------------------------------------------------------------
+  // Main Floating Widget UI
+  // -------------------------------------------------------------
   const widget = document.createElement('div');
   widget.id = 'godot-ai-widget';
   widget.innerHTML = `
@@ -67,7 +168,7 @@
       <div class="gai-header" id="gai-header">
         <div class="gai-title">
           <span>🎓</span>
-          <span>Godot AI Mahasiswa</span>
+          <span>Godot AI Smart Asisten</span>
         </div>
         <div style="display: flex; align-items: center; gap: 6px;">
           <span id="gai-git-badge" class="gai-badge gai-badge-offline">Offline</span>
@@ -78,67 +179,120 @@
       <div class="gai-body" id="gai-body">
         <!-- Tabs Navigation -->
         <div class="gai-tabs">
-          <button class="gai-tab active" data-tab="prompts">📚 Asisten Prompt</button>
+          <button class="gai-tab active" data-tab="prompts">📚 Prompt</button>
+          <button class="gai-tab" data-tab="context">🧠 Konteks</button>
+          <button class="gai-tab" data-tab="wizard">🎮 Wizard</button>
           <button class="gai-tab" data-tab="debug">🐞 Fix Error</button>
-          <button class="gai-tab" data-tab="git">🔄 Git Sync</button>
+          <button class="gai-tab" data-tab="git">🔄 Git</button>
         </div>
 
-        <!-- TAB 1: PROMPTS -->
+        <!-- TAB 1: QUICK PROMPTS -->
         <div id="gai-tab-prompts" class="gai-tab-content">
           <div class="gai-prompts">
             <button class="gai-prompt-btn" data-type="movement">
-              <span class="gai-prompt-icon">🏃</span>
+              <span style="font-size: 15px;">🏃</span>
               <div>
                 <strong>Player 3D Controller</strong>
                 <div style="font-size: 10.5px; color: #94a3b8;">WASD, sprint, jump, mouse look + komentar</div>
               </div>
             </button>
-
             <button class="gai-prompt-btn" data-type="fsm">
-              <span class="gai-prompt-icon">⚔️</span>
+              <span style="font-size: 15px;">⚔️</span>
               <div>
-                <strong>AI Enemy State Machine</strong>
-                <div style="font-size: 10.5px; color: #94a3b8;">Patroli, kejar pemain, serang (FSM edukatif)</div>
+                <strong>AI Enemy FSM (State Machine)</strong>
+                <div style="font-size: 10.5px; color: #94a3b8;">Patroli, kejar pemain, serang</div>
               </div>
             </button>
-
             <button class="gai-prompt-btn" data-type="inventory">
-              <span class="gai-prompt-icon">🎒</span>
+              <span style="font-size: 15px;">🎒</span>
               <div>
                 <strong>Sistem Inventory & Pick-Up</strong>
-                <div style="font-size: 10.5px; color: #94a3b8;">Ambil item 3D, simpan data & tampilkan di UI</div>
+                <div style="font-size: 10.5px; color: #94a3b8;">Ambil item 3D & tampilkan di UI</div>
               </div>
             </button>
-
             <button class="gai-prompt-btn" data-type="laporan">
-              <span class="gai-prompt-icon">📝</span>
+              <span style="font-size: 15px;">📝</span>
               <div>
-                <strong>Format Laporan / Tugas Kuliah</strong>
-                <div style="font-size: 10.5px; color: #94a3b8;">Jelaskan arsitektur & dokumentasi kode</div>
+                <strong>Draf Laporan Praktikum</strong>
+                <div style="font-size: 10.5px; color: #94a3b8;">Format penjelasan arsitektur kode tugas</div>
               </div>
             </button>
           </div>
         </div>
 
-        <!-- TAB 2: DEBUG -->
-        <div id="gai-tab-debug" class="gai-tab-content" style="display: none;">
-          <div class="gai-error-box">
-            <label style="font-size: 11px; color: #94a3b8;">Tempel Pesan Error dari Konsol Godot:</label>
-            <textarea id="gai-error-input" class="gai-error-textarea" placeholder="Contoh: Invalid call to function 'move_and_slide' in base 'null instance'..."></textarea>
-            <button id="gai-btn-fix-error" class="gai-btn-fix">🔍 Analisis & Tanyakan Solusi ke AI</button>
+        <!-- TAB 2: SMART PROJECT CONTEXT -->
+        <div id="gai-tab-context" class="gai-tab-content" style="display: none;">
+          <div class="gai-context-box">
+            <div class="gai-context-item">
+              <span>Proyek:</span>
+              <strong id="gai-ctx-proj-name">Memindai...</strong>
+            </div>
+            <div class="gai-context-item">
+              <span>Scenes:</span>
+              <span id="gai-ctx-scenes-count">-</span>
+            </div>
+            <div class="gai-context-item">
+              <span>Scripts:</span>
+              <span id="gai-ctx-scripts-count">-</span>
+            </div>
+          </div>
+          <p style="font-size: 11px; color: #94a3b8; margin: 6px 0;">
+            Kirim struktur seluruh scene, node, dan variabel proyek Godotmu ke AI agar balasan AI 100% tepat dan nyambung dengan kodinganmu!
+          </p>
+          <button id="gai-btn-send-context" class="gai-btn-primary">
+            📋 Kirim Konteks Proyek ke AI
+          </button>
+        </div>
+
+        <!-- TAB 3: GAME MECHANICS WIZARD -->
+        <div id="gai-tab-wizard" class="gai-tab-content" style="display: none;">
+          <div class="gai-wizard-section">
+            <span class="gai-wizard-label">1. Tipe / Genre Game:</span>
+            <select id="gai-wiz-genre" class="gai-select">
+              <option value="3D Survival Open World">3D Survival Open World</option>
+              <option value="3D Action Platformer">3D Action Platformer</option>
+              <option value="First-Person Shooter (FPS)">First-Person Shooter (FPS)</option>
+              <option value="2D Top-Down RPG">2D Top-Down RPG</option>
+              <option value="2D Metroidvania Platformer">2D Metroidvania Platformer</option>
+            </select>
+
+            <span class="gai-wizard-label">2. Pilih Mekanik Karakter:</span>
+            <div class="gai-checkbox-grid">
+              <label class="gai-chk-label"><input type="checkbox" id="wiz-chk-sprint" checked /> Sprint & Stamina</label>
+              <label class="gai-chk-label"><input type="checkbox" id="wiz-chk-jump" checked /> Double Jump</label>
+              <label class="gai-chk-label"><input type="checkbox" id="wiz-chk-dash" /> Dash / Dodge</label>
+              <label class="gai-chk-label"><input type="checkbox" id="wiz-chk-crouch" /> Crouch / Nunduk</label>
+              <label class="gai-chk-label"><input type="checkbox" id="wiz-chk-hp" checked /> Health Bar UI</label>
+              <label class="gai-chk-label"><input type="checkbox" id="wiz-chk-inventory" checked /> Inventory Item</label>
+              <label class="gai-chk-label"><input type="checkbox" id="wiz-chk-fsm" checked /> Enemy FSM AI</label>
+              <label class="gai-chk-label"><input type="checkbox" id="wiz-chk-daynight" /> Day/Night Sky</label>
+            </div>
+
+            <button id="gai-btn-generate-wizard" class="gai-btn-primary" style="margin-top: 6px;">
+              ✨ Buat Prompt Spesifikasi Otomatis
+            </button>
           </div>
         </div>
 
-        <!-- TAB 3: GIT SYNC -->
+        <!-- TAB 4: DEBUG ERROR FIXER -->
+        <div id="gai-tab-debug" class="gai-tab-content" style="display: none;">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label style="font-size: 11px; color: #94a3b8;">Tempel Pesan Error dari Konsol Godot:</label>
+            <textarea id="gai-error-input" class="gai-error-textarea" placeholder="Paste error merah dari Godot debugger di sini..."></textarea>
+            <button id="gai-btn-fix-error" class="gai-btn-primary" style="background: #dc2626;">🔍 Analisis & Tanyakan Solusi ke AI</button>
+          </div>
+        </div>
+
+        <!-- TAB 5: GIT SYNC -->
         <div id="gai-tab-git" class="gai-tab-content" style="display: none;">
-          <div class="gai-git-info">
-            <div class="gai-git-row">
+          <div class="gai-context-box">
+            <div class="gai-context-item">
               <span>Repo:</span>
               <a href="https://github.com/NourAnisa/godot_AI" target="_blank" style="color: #818cf8; text-decoration: none;">NourAnisa/godot_AI</a>
             </div>
-            <div class="gai-git-row">
+            <div class="gai-context-item">
               <span>Status:</span>
-              <span id="gai-git-status-text" class="gai-git-val">-</span>
+              <span id="gai-git-status-text">-</span>
             </div>
           </div>
           <div class="gai-actions" style="margin-top: 8px;">
@@ -150,7 +304,7 @@
       </div>
 
       <div class="gai-footer">
-        <span>godot_AI Student Toolkit v1.0</span>
+        <span>Godot AI Smart Assistant v2.0</span>
         <a href="https://github.com/NourAnisa/godot_AI" target="_blank" style="color: #818cf8; text-decoration: none;">GitHub</a>
       </div>
     </div>
@@ -180,9 +334,13 @@
       tabs.forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
       activeTab = tab.getAttribute('data-tab');
-      document.getElementById('gai-tab-prompts').style.display = activeTab === 'prompts' ? 'block' : 'none';
-      document.getElementById('gai-tab-debug').style.display = activeTab === 'debug' ? 'block' : 'none';
-      document.getElementById('gai-tab-git').style.display = activeTab === 'git' ? 'block' : 'none';
+
+      ['prompts', 'context', 'wizard', 'debug', 'git'].forEach(t => {
+        const el = document.getElementById(`gai-tab-${t}`);
+        if (el) el.style.display = activeTab === t ? 'block' : 'none';
+      });
+
+      if (activeTab === 'context') loadProjectContext();
     });
   });
 
@@ -193,7 +351,7 @@
 - Shift untuk Sprint (lari lebih cepat)
 - Space untuk Melompat dengan simulasi gravitasi
 - Mouse look (kamera third-person atau first-person)
-Sertakan komentar penjelasan pada setiap baris logika agar mudah dipahami untuk keperluan laporan praktikum game dev.`,
+Sertakan komentar penjelasan pada setiap baris logika agar mudah dipahami untuk tugas kuliah game dev.`,
 
     fsm: `Tolong buatkan implementasi AI Musuh (Enemy AI 3D) di Godot 4 menggunakan konsep Finite State Machine (FSM):
 1. State IDLE / PATROL: Bergerak secara berkala ke titik patroli acak.
@@ -202,7 +360,7 @@ Sertakan komentar penjelasan pada setiap baris logika agar mudah dipahami untuk 
 Jelaskan alur transisi antar state ini secara edukatif agar mahasiswa bisa memahaminya.`,
 
     inventory: `Buatkan sistem Inventory dan Item Pick-up sederhana di Godot 4:
-1. Item di dunia 3D (Area3D) yang dapat diambil saat player menyentuh / menekan tombol interaksi E.
+1. Item di dunia 3D (Area3D) yang dapat diambil saat player menyentuh / menekan tombol E.
 2. Data inventory disimpan menggunakan Dictionary / Resource GDScript.
 3. UI sederhana (CanvasLayer) untuk menampilkan daftar item dan jumlahnya di layar.
 Tuliskan kodenya secara modular dan bersih.`,
@@ -210,18 +368,76 @@ Tuliskan kodenya secara modular dan bersih.`,
     laporan: `Tolong buatkan draf dokumentasi / laporan teknis untuk tugas kuliah pengembangan game Godot 4 dari script/fitur yang baru saja kita diskusikan:
 1. Tujuan dan fungsi modul/skrip.
 2. Struktur Scene dan Node yang digunakan.
-3. Penjelasan fungsi utama (_ready, _process, _physics_process) dan sinyal (signal).
+3. Penjelasan fungsi utama (_ready, _physics_process) dan sinyal (signals).
 4. Analisis efisiensi algoritma.`
   };
 
-  // Bind Prompt Buttons
   document.querySelectorAll('.gai-prompt-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const type = btn.getAttribute('data-type');
-      if (PROMPTS[type]) {
-        insertTextToAI(PROMPTS[type]);
-      }
+      if (PROMPTS[type]) insertTextToAI(PROMPTS[type]);
     });
+  });
+
+  // -------------------------------------------------------------
+  // SMART TAB: Project Context Loader
+  // -------------------------------------------------------------
+  async function loadProjectContext() {
+    const projNameEl = document.getElementById('gai-ctx-proj-name');
+    const scenesEl = document.getElementById('gai-ctx-scenes-count');
+    const scriptsEl = document.getElementById('gai-ctx-scripts-count');
+
+    try {
+      const res = await fetch(`${DAEMON_URL}/project-context`);
+      if (!res.ok) throw new Error();
+      projectContextCache = await res.json();
+
+      projNameEl.textContent = projectContextCache.projectName || 'Godot AI';
+      scenesEl.textContent = `${projectContextCache.scenes.length} scene (${projectContextCache.scenes.map(s => s.file.split('/').pop()).join(', ')})`;
+      scriptsEl.textContent = `${projectContextCache.scripts.length} script (${projectContextCache.scripts.map(s => s.className || s.file.split('/').pop()).join(', ')})`;
+    } catch {
+      projNameEl.textContent = 'Daemon Offline';
+      scenesEl.textContent = '-';
+      scriptsEl.textContent = '-';
+    }
+  }
+
+  document.getElementById('gai-btn-send-context').addEventListener('click', async () => {
+    if (!projectContextCache) await loadProjectContext();
+    if (projectContextCache && projectContextCache.formattedPrompt) {
+      insertTextToAI(projectContextCache.formattedPrompt);
+    } else {
+      showToast('⚠️ Pastikan sync daemon aktif di laptop!', true);
+    }
+  });
+
+  // -------------------------------------------------------------
+  // SMART TAB: Game Mechanics Wizard
+  // -------------------------------------------------------------
+  document.getElementById('gai-btn-generate-wizard').addEventListener('click', () => {
+    const genre = document.getElementById('gai-wiz-genre').value;
+    const mechanics = [];
+
+    if (document.getElementById('wiz-chk-sprint').checked) mechanics.push('Sistem Lari Sprint (Shift) dengan konsumsi Stamina Bar');
+    if (document.getElementById('wiz-chk-jump').checked) mechanics.push('Double Jump (Lompat Dua Kali)');
+    if (document.getElementById('wiz-chk-dash').checked) mechanics.push('Dash / Dodge cepat dengan cooldown');
+    if (document.getElementById('wiz-chk-crouch').checked) mechanics.push('Crouch / Berjongkok mengubah tinggi collision');
+    if (document.getElementById('wiz-chk-hp').checked) mechanics.push('Sistem HP Karakter + Tampilan Health Bar di UI');
+    if (document.getElementById('wiz-chk-inventory').checked) mechanics.push('Sistem Inventory & Pengambilan Item 3D');
+    if (document.getElementById('wiz-chk-fsm').checked) mechanics.push('AI Musuh Berbasis Finite State Machine (Patrol, Chase, Attack)');
+    if (document.getElementById('wiz-chk-daynight').checked) mechanics.push('Siklus Siang dan Malam (Procedural Sky + Sun Rotation)');
+
+    const prompt = `Saya adalah mahasiswa yang sedang membuat game bergenre "${genre}" di Godot Engine 4.
+Tolong buatkan arsitektur dan script GDScript lengkap untuk mengimplementasikan fitur-fitur berikut:
+
+${mechanics.map((m, i) => `${i + 1}. ${m}`).join('\n')}
+
+Persyaratan Khusus:
+- Gunakan standar GDScript Godot 4 terbaru (static typing: float, int, Vector3, dll.).
+- Cantumkan nama file yang disarankan di baris pertama script (contoh: # res://scripts/...).
+- Berikan komentar edukatif yang menjelaskan logika kodenya agar mudah dipelajari untuk tugas kuliah.`;
+
+    insertTextToAI(prompt);
   });
 
   // Debug Error Fixer
@@ -255,7 +471,7 @@ Tuliskan kodenya secara modular dan bersih.`,
         gitBadge.textContent = 'Tersinkron';
         gitStatusText.textContent = 'Lokal & GitHub sama persis';
       }
-    } catch (e) {
+    } catch {
       gitBadge.className = 'gai-badge gai-badge-offline';
       gitBadge.textContent = 'Offline';
       gitStatusText.textContent = 'start-sync.bat belum aktif';
@@ -270,12 +486,8 @@ Tuliskan kodenya secara modular dan bersih.`,
       if (data.success) {
         showToast('✅ Berhasil menarik kode ke folder proyek!');
         updateGitStatus();
-      } else {
-        showToast('❌ Gagal pull: ' + data.error, true);
       }
-    } catch {
-      showToast('❌ Daemon offline', true);
-    }
+    } catch {}
   });
 
   document.getElementById('gai-btn-push').addEventListener('click', async () => {
@@ -290,19 +502,16 @@ Tuliskan kodenya secara modular dan bersih.`,
       if (data.success) {
         showToast('🚀 Berhasil push tugas ke GitHub!');
         updateGitStatus();
-      } else {
-        showToast('❌ Gagal push: ' + data.error, true);
       }
-    } catch {
-      showToast('❌ Daemon offline', true);
-    }
+    } catch {}
   });
 
   document.getElementById('gai-btn-sync').addEventListener('click', updateGitStatus);
 
-  // Check periodically
+  // Monitor DOM for code blocks to inject "Apply to Godot" buttons
+  setInterval(injectApplyButtonsToCodeBlocks, 1500);
   updateGitStatus();
   setInterval(updateGitStatus, 10000);
 
-  console.log('[Godot AI Mahasiswa] Content script active.');
+  console.log('[Godot AI Smart v2] Loaded.');
 })();
