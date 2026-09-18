@@ -366,7 +366,6 @@ void fragment() {
           <label style="font-size:11px; color:#94a3b8; display:block; margin-bottom:4px;">Pilih Proyek Aktif:</label>
           <select id="gai-sel-project" class="gai-select" style="margin-bottom:8px;">
             <option value="godot_ai">godot_AI (Starter Kit)</option>
-            <option value="fading_dawn">fading-dawn-godot</option>
             <option value="custom">+ Atur Folder / Repo Lain</option>
           </select>
 
@@ -376,9 +375,14 @@ void fragment() {
           <label style="font-size:11px; color:#94a3b8; display:block; margin-bottom:2px;">URL Repository GitHub:</label>
           <input type="text" id="gai-inp-repo-url" class="gai-select" style="margin-bottom:8px;" />
 
-          <button id="gai-btn-save-project" class="gai-btn-primary" style="background:#10b981;">
-            💾 Terapkan & Simpan Proyek
-          </button>
+          <div style="display:flex; gap:6px;">
+            <button id="gai-btn-save-project" class="gai-btn-primary" style="background:#10b981; flex:1;">
+              💾 Terapkan & Simpan Proyek
+            </button>
+            <button id="gai-btn-del-project" class="gai-btn-primary" style="background:#ef4444; width:auto; padding:8px 12px; display:none;" title="Hapus proyek ini dari daftar">
+              🗑️
+            </button>
+          </div>
         </div>
       </div>
 
@@ -882,7 +886,15 @@ Tolong bantu selesaikan masalah ini:
   const inpLocalPath = document.getElementById('gai-inp-local-path');
   const inpRepoUrl = document.getElementById('gai-inp-repo-url');
   const btnSaveProject = document.getElementById('gai-btn-save-project');
+  const btnDelProject = document.getElementById('gai-btn-del-project');
   const footerProj = document.getElementById('gai-footer-proj');
+
+  function updateDelBtnVisibility() {
+    const selected = selProject.value;
+    if (btnDelProject) {
+      btnDelProject.style.display = (selected !== 'godot_ai' && selected !== 'custom') ? 'block' : 'none';
+    }
+  }
 
   async function loadProjectConfig() {
     try {
@@ -909,6 +921,7 @@ Tolong bantu selesaikan masalah ini:
         customOpt.textContent = '+ Tambah / Atur Proyek Baru';
         selProject.appendChild(customOpt);
       }
+      updateDelBtnVisibility();
     } catch {
       footerProj.textContent = 'Daemon Offline';
     }
@@ -916,6 +929,7 @@ Tolong bantu selesaikan masalah ini:
 
   selProject.addEventListener('change', () => {
     const selected = selProject.value;
+    updateDelBtnVisibility();
     if (selected === 'custom') {
       inpLocalPath.value = '';
       inpRepoUrl.value = '';
@@ -930,6 +944,31 @@ Tolong bantu selesaikan masalah ini:
       }
     }
   });
+
+  if (btnDelProject) {
+    btnDelProject.addEventListener('click', async () => {
+      const selected = selProject.value;
+      if (selected === 'godot_ai' || selected === 'custom') return;
+      if (!confirm('Hapus proyek ini dari daftar?')) return;
+
+      btnDelProject.disabled = true;
+      try {
+        const res = await fetch(`${DAEMON_URL}/config`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deleteProjectId: selected })
+        });
+        if (!res.ok) throw new Error();
+        showToast('🗑️ Proyek berhasil dihapus dari daftar.');
+        loadProjectConfig();
+        updateGitStatus();
+      } catch {
+        showToast('❌ Gagal menghapus proyek', true);
+      } finally {
+        btnDelProject.disabled = false;
+      }
+    });
+  }
 
   btnSaveProject.addEventListener('click', async () => {
     const localPath = inpLocalPath.value.trim();

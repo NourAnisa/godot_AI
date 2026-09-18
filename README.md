@@ -45,7 +45,7 @@ Koleksi shader Godot 4 berkualitas tinggi yang siap dipasang ke dalam game hanya
 - Kotak analisis error debugger Godot: tempelkan stack trace error merah, dan AI akan menganalisis penyebab, memberikan kode solusi, dan tips pencegahan.
 
 ### 8. 📁 Multi-Project Switcher & Custom Path
-- Mendukung peralihan instan antara berbagai proyek (misalnya `godot_ai` dan `fading_dawn`).
+- Mendukung penambahan dan peralihan instan antara berbagai proyek game Godot di komputermu.
 - Pengguna dapat menentukan sendiri path folder lokal di laptop dan URL repositori GitHub melalui tab **⚙️ Proyek** atau popup ekstensi.
 
 ---

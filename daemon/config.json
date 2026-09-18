@@ -4,24 +4,17 @@
   "godotProjectPath": "C:\\Users\\Nor Anisa\\godot_AI\\godot_project",
   "repoUrl": "https://github.com/NourAnisa/godot_AI.git",
   "gitPath": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\IDE\\CommonExtensions\\Microsoft\\TeamFoundation\\Team Explorer\\Git\\cmd\\git.exe",
-  "godotExe": "C:\\Users\\Nor Anisa\\Downloads\\Godot_v4.7.2-stable_win64.exe\\Godot_v4.7.2-stable_win64_console.exe",
+  "godotExe": "C:\\Users\\Nor Anisa\\Downloads\\Godot_v4.7.2-stable_win64.exe\\Godot_v4.7.2-stable_win64.exe",
   "autoSync": true,
   "autoSyncInterval": 10,
   "activeProject": "godot_ai",
   "projects": [
     {
-      "repoUrl": "https://github.com/NourAnisa/godot_AI.git",
-      "godotProjectPath": "C:\\Users\\Nor Anisa\\godot_AI\\godot_project",
-      "name": "godot_AI (Starter Kit)",
       "id": "godot_ai",
-      "localPath": "C:\\Users\\Nor Anisa\\godot_AI"
-    },
-    {
-      "repoUrl": "https://github.com/NourAnisa/fading-dawn-godot.git",
-      "godotProjectPath": "C:\\Users\\Nor Anisa\\Downloads\\fadingdowngodot",
-      "name": "fading-dawn-godot",
-      "id": "fading_dawn",
-      "localPath": "C:\\Users\\Nor Anisa\\Downloads\\fadingdowngodot"
+      "name": "godot_AI (Starter Kit)",
+      "localPath": "C:\\Users\\Nor Anisa\\godot_AI",
+      "godotProjectPath": "C:\\Users\\Nor Anisa\\godot_AI\\godot_project",
+      "repoUrl": "https://github.com/NourAnisa/godot_AI.git"
     }
   ]
 }

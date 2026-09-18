@@ -23,13 +23,6 @@ function loadConfig() {
         localPath: "C:\\Users\\Nor Anisa\\godot_AI",
         godotProjectPath: "C:\\Users\\Nor Anisa\\godot_AI\\godot_project",
         repoUrl: "https://github.com/NourAnisa/godot_AI.git"
-      },
-      {
-        id: "fading_dawn",
-        name: "fading-dawn-godot",
-        localPath: "C:\\Users\\Nor Anisa\\Downloads\\fadingdowngodot",
-        godotProjectPath: "C:\\Users\\Nor Anisa\\Downloads\\fadingdowngodot",
-        repoUrl: "https://github.com/NourAnisa/fading-dawn-godot.git"
       }
     ]
   };
@@ -507,6 +500,23 @@ const server = http.createServer(async (req, res) => {
             config.localPath = found.localPath;
             config.repoUrl = found.repoUrl;
             config.godotProjectPath = found.godotProjectPath || found.localPath;
+          }
+        }
+
+        if (payload.deleteProjectId && Array.isArray(config.projects)) {
+          config.projects = config.projects.filter(p => p.id !== payload.deleteProjectId);
+          if (config.activeProject === payload.deleteProjectId) {
+            const first = config.projects[0] || {
+              id: "godot_ai",
+              name: "godot_AI (Starter Kit)",
+              localPath: "C:\\Users\\Nor Anisa\\godot_AI",
+              godotProjectPath: "C:\\Users\\Nor Anisa\\godot_AI\\godot_project",
+              repoUrl: "https://github.com/NourAnisa/godot_AI.git"
+            };
+            config.activeProject = first.id;
+            config.localPath = first.localPath;
+            config.repoUrl = first.repoUrl;
+            config.godotProjectPath = first.godotProjectPath || first.localPath;
           }
         }
 
