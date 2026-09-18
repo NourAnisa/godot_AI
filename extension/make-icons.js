@@ -65,7 +65,7 @@ function createSolidPng(width, height, r, g, b, a = 255) {
 }
 
 const iconsDir = path.join('C:\\Users\\Nor Anisa\\godot_AI\\extension\\icons');
-// Indigo theme for AI/Mahasiswa: r:99, g:102, b:241 (#6366f1)
+// Indigo theme for Godot AI: r:99, g:102, b:241 (#6366f1)
 fs.writeFileSync(path.join(iconsDir, 'icon16.png'), createSolidPng(16, 16, 99, 102, 241));
 fs.writeFileSync(path.join(iconsDir, 'icon48.png'), createSolidPng(48, 48, 99, 102, 241));
 fs.writeFileSync(path.join(iconsDir, 'icon128.png'), createSolidPng(128, 128, 99, 102, 241));

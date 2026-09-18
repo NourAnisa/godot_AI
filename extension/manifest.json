@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Godot AI - Asisten Mahasiswa",
-  "version": "1.0.0",
-  "description": "Membantu mahasiswa mengembangkan game Godot bersama AI (ChatGPT, Claude, DeepSeek, Gemini) dengan 1-Click Prompt Assistant, Debugger Error Fixer, dan Git Auto-Sync.",
+  "name": "Godot AI - Game Dev Assistant",
+  "version": "2.0.0",
+  "description": "Asisten pengembangan game Godot bersama AI (ChatGPT, Claude, DeepSeek, Gemini) dengan 1-Click Apply to Godot, Project Context Scanner, dan Git Auto-Sync.",
   "permissions": [
     "storage"
   ],

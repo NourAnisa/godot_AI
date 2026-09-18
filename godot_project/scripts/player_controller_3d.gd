@@ -2,7 +2,7 @@ extends CharacterBody3D
 class_name PlayerController3D
 
 ## ====================================================================
-## PlayerController3D - Skrip Karakter Edukatif untuk Mahasiswa
+## PlayerController3D - Skrip Karakter 3D Modular
 ## Konsep: Kinematika, Gravitasi, Input Polling, Vector Math & Lerp
 ## ====================================================================
 

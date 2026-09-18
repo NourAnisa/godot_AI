@@ -1,6 +1,6 @@
-# 🎓 Godot AI v2.0 - Toolkit & Asisten Cerdas untuk Mahasiswa
+# 🎮 Godot AI v2.0 - Game Development Toolkit & Assistant
 
-Toolkit tingkat lanjut berbasis **Browser Extension + Smart Sync Daemon + Godot 4 Starter Kit** yang dirancang untuk mempermudah mahasiswa dalam belajar membuat game dengan **Godot Engine 4** menggunakan kecerdasan buatan (**ChatGPT, Claude, DeepSeek, dan Google Gemini**).
+Toolkit tingkat lanjut berbasis **Browser Extension + Smart Sync Daemon + Godot 4 Starter Kit** yang dirancang untuk mempermudah dan mempercepat alur kerja pengembangan game di **Godot Engine 4** dengan bantuan kecerdasan buatan (**ChatGPT, Claude, DeepSeek, dan Google Gemini**).
 
 Repository GitHub: [https://github.com/NourAnisa/godot_AI](https://github.com/NourAnisa/godot_AI)
 
@@ -9,8 +9,8 @@ Repository GitHub: [https://github.com/NourAnisa/godot_AI](https://github.com/No
 ## ⚡ Fitur Cerdas (Smart AI Features)
 
 ### 1. ⚡ 1-Click "Pasang ke Godot" (Apply to Godot)
-- Di antarmuka web AI (ChatGPT, Claude, DeepSeek, Gemini), tombol **`⚡ Pasang ke Godot`** akan otomatis muncul di atas setiap blok kode GDScript yang dibuatkan oleh AI.
-- Sekali klik, kode langsung ditulis ke file di folder `godot_project/scripts/` dan otomatis ter-reload di editor Godot! Tidak perlu lagi repot copy-paste manual.
+- Di antarmuka web AI (ChatGPT, Claude, DeepSeek, Gemini), tombol **`⚡ Pasang ke Godot`** akan otomatis muncul di pojok atas setiap blok kode GDScript yang dibuatkan oleh AI.
+- Sekali klik, kodenya **langsung ditulis ke file di folder proyek Godot laptopmu** dan otomatis ter-reload di editor Godot! Tidak perlu lagi repot copy-paste manual.
 
 ### 2. 🧠 Project Context Scanner (Kirim Konteks Proyek ke AI)
 - Tombol **`📋 Kirim Konteks Proyek ke AI`** di tab Konteks:
@@ -29,7 +29,7 @@ Repository GitHub: [https://github.com/NourAnisa/godot_AI](https://github.com/No
 - Sekali klik langsung memformat pertanyaan konsultasi agar AI menjelaskan akar masalah dan memberikan kode perbaikannya.
 
 ### 5. 🔄 1-Click Git & Auto-Sync
-- Tombol `⬇️ Pull dari AI` dan `⬆️ Push Tugas` tanpa perlu mengetik baris perintah Git di terminal.
+- Tombol `⬇️ Pull dari AI` dan `⬆️ Push Perubahan` tanpa perlu mengetik baris perintah Git di terminal.
 
 ---
 
@@ -47,7 +47,7 @@ Repository GitHub: [https://github.com/NourAnisa/godot_AI](https://github.com/No
    ```
 
 ### 2. Menjalankan Daemon di Laptop
-- Cukup klik 2x shortcut **`Godot AI Mahasiswa Sync`** yang ada di **Desktop** (atau jalankan file `start-sync.bat`).
+- Cukup klik 2x shortcut **`Godot AI Sync`** yang ada di **Desktop** (atau jalankan file `start-sync.bat`).
 - Daemon berjalan di latar belakang pada port `32124`.
 
 ### 3. Membuka Proyek di Godot 4
@@ -63,7 +63,7 @@ Repository GitHub: [https://github.com/NourAnisa/godot_AI](https://github.com/No
 godot_AI/
 ├── extension/          # Ekstensi browser v2.0 (ChatGPT, Claude, DeepSeek, Gemini)
 │   ├── content.js      # Injeksi tombol "Apply to Godot", Wizard, & Context Scanner
-│   ├── styles.css      # Desain tema gelap edukatif
+│   ├── styles.css      # Desain tema gelap modern
 │   ├── popup.html
 │   └── manifest.json
 ├── daemon/             # Smart Sync Daemon (Node.js) port 32124

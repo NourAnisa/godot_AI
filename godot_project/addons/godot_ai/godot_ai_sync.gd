@@ -8,8 +8,8 @@ var daemon_url := "http://127.0.0.1:32124"
 
 func _enter_tree() -> void:
 	toolbar_button = Button.new()
-	toolbar_button.text = "🎓 Sync AI Mahasiswa"
-	toolbar_button.tooltip_text = "Tarik kode terbaru dari AI / GitHub ke folder tugas"
+	toolbar_button.text = "⚡ Sync Godot AI"
+	toolbar_button.tooltip_text = "Tarik kode terbaru dari AI / GitHub ke folder proyek"
 	toolbar_button.pressed.connect(_on_sync_pressed)
 	add_control_to_container(CONTAINER_TOOLBAR, toolbar_button)
 
@@ -48,7 +48,7 @@ func _check_status() -> void:
 				toolbar_button.text = "🟡 Ada Update AI (" + str(json["behind"]) + ")"
 				toolbar_button.modulate = Color(1.0, 0.8, 0.2)
 			else:
-				toolbar_button.text = "🎓 Sync AI Mahasiswa"
+				toolbar_button.text = "⚡ Sync Godot AI"
 				toolbar_button.modulate = Color.WHITE
 		client.queue_free()
 	)
@@ -56,7 +56,7 @@ func _check_status() -> void:
 
 func _on_request_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedStringArray) -> void:
 	toolbar_button.disabled = false
-	toolbar_button.text = "🎓 Sync AI Mahasiswa"
+	toolbar_button.text = "⚡ Sync Godot AI"
 	if response_code == 200:
 		print("[Godot AI] Kode berhasil disinkronkan dengan GitHub!")
 		get_editor_interface().get_resource_filesystem().scan()

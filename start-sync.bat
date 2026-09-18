@@ -1,7 +1,7 @@
 @echo off
-title Godot AI Mahasiswa - Git Sync Daemon (Port 32124)
+title Godot AI - Git Sync Daemon (Port 32124)
 echo ==============================================================
-echo    Godot AI - Asisten Mahasiswa (Git Sync Daemon)
+echo    Godot AI - Game Dev Assistant (Git Sync Daemon)
 echo ==============================================================
 echo Folder Proyek: C:\Users\Nor Anisa\godot_AI
 echo Repo GitHub:   https://github.com/NourAnisa/godot_AI

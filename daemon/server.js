@@ -108,7 +108,7 @@ function getProjectContext() {
   }
 
   // Pre-generate prompt markdown
-  let promptText = `[KONTEKS PROYEK GODOT 4 MAHASISWA]\n`;
+  let promptText = `[KONTEKS PROYEK GODOT 4]\n`;
   promptText += `Nama Proyek: ${context.projectName}\n`;
   promptText += `Main Scene: ${context.mainScene || 'res://scenes/main.tscn'}\n\n`;
 
@@ -233,7 +233,7 @@ async function pullChanges() {
 }
 
 async function pushChanges(message) {
-  const commitMsg = message && message.trim() ? message.trim() : `Update tugas Godot AI [${new Date().toLocaleTimeString()}]`;
+  const commitMsg = message && message.trim() ? message.trim() : `Update Godot AI project [${new Date().toLocaleTimeString()}]`;
   const addRes = await runGit(['add', '.']);
   if (!addRes.success) return addRes;
 

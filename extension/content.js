@@ -1,4 +1,4 @@
-// Godot AI - Asisten Mahasiswa v2.0 (Smart Edition)
+// Godot AI - Game Dev Assistant v2.0
 // Compatible with ChatGPT, Claude, DeepSeek, Gemini
 
 (function() {
@@ -60,18 +60,15 @@
   // SMART FEATURE 1: 1-Click "Apply to Godot" Button on Code Blocks
   // -------------------------------------------------------------
   function guessFilenameFromCode(code) {
-    // 1. Look for # res:// or # path: or # scripts/
     const pathMatch = code.match(/#\s*(?:res:\/\/|path:\s*|file:\s*)?([A-Za-z0-9_\-\/]+\.(?:gd|tscn))/i);
     if (pathMatch) return pathMatch[1];
 
-    // 2. Look for class_name FooBar -> scripts/foo_bar.gd
     const classMatch = code.match(/class_name\s+([A-Za-z0-9_]+)/);
     if (classMatch) {
       const snakeCase = classMatch[1].replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase();
       return `scripts/${snakeCase}.gd`;
     }
 
-    // 3. Look for extends CharacterBody3D or Player
     if (code.includes('extends CharacterBody3D') && code.includes('velocity')) {
       return 'scripts/player_controller_3d.gd';
     }
@@ -94,7 +91,6 @@
       const codeEl = pre.querySelector('code') || pre;
       const codeText = codeEl.innerText || codeEl.textContent || '';
 
-      // Only attach to GDScript / Python-like code blocks
       const isGdscript = codeText.includes('extends ') ||
                          codeText.includes('func _ready') ||
                          codeText.includes('func _physics_process') ||
@@ -167,8 +163,8 @@
     <div class="gai-card" id="gai-card">
       <div class="gai-header" id="gai-header">
         <div class="gai-title">
-          <span>🎓</span>
-          <span>Godot AI Smart Asisten</span>
+          <span>⚡</span>
+          <span>Godot AI Assistant</span>
         </div>
         <div style="display: flex; align-items: center; gap: 6px;">
           <span id="gai-git-badge" class="gai-badge gai-badge-offline">Offline</span>
@@ -213,8 +209,8 @@
             <button class="gai-prompt-btn" data-type="laporan">
               <span style="font-size: 15px;">📝</span>
               <div>
-                <strong>Draf Laporan Praktikum</strong>
-                <div style="font-size: 10.5px; color: #94a3b8;">Format penjelasan arsitektur kode tugas</div>
+                <strong>Dokumentasi Teknis Proyek</strong>
+                <div style="font-size: 10.5px; color: #94a3b8;">Penjelasan arsitektur & dokumentasi kode</div>
               </div>
             </button>
           </div>
@@ -297,14 +293,14 @@
           </div>
           <div class="gai-actions" style="margin-top: 8px;">
             <button id="gai-btn-pull" class="gai-btn gai-btn-pull">⬇️ Pull dari AI</button>
-            <button id="gai-btn-push" class="gai-btn gai-btn-push">⬆️ Push Tugas</button>
+            <button id="gai-btn-push" class="gai-btn gai-btn-push">⬆️ Push Perubahan</button>
             <button id="gai-btn-sync" class="gai-btn gai-btn-sync">🔄 Cek Sinkronisasi</button>
           </div>
         </div>
       </div>
 
       <div class="gai-footer">
-        <span>Godot AI Smart Assistant v2.0</span>
+        <span>Godot AI Assistant v2.0</span>
         <a href="https://github.com/NourAnisa/godot_AI" target="_blank" style="color: #818cf8; text-decoration: none;">GitHub</a>
       </div>
     </div>
@@ -319,7 +315,6 @@
   const gitStatusText = document.getElementById('gai-git-status-text');
   const tabs = document.querySelectorAll('.gai-tab');
 
-  // Toggle Collapse
   function toggle() {
     isCollapsed = !isCollapsed;
     card.classList.toggle('gai-collapsed', isCollapsed);
@@ -328,7 +323,6 @@
   btnToggle.addEventListener('click', toggle);
   header.addEventListener('dblclick', toggle);
 
-  // Switch Tabs
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
       tabs.forEach(t => t.classList.remove('active'));
@@ -344,20 +338,19 @@
     });
   });
 
-  // Prompt Templates Dictionary
   const PROMPTS = {
     movement: `Buatkan script CharacterBody3D (GDScript Godot 4) lengkap untuk pergerakan karakter 3D:
 - Kontrol WASD untuk navigasi
 - Shift untuk Sprint (lari lebih cepat)
 - Space untuk Melompat dengan simulasi gravitasi
 - Mouse look (kamera third-person atau first-person)
-Sertakan komentar penjelasan pada setiap baris logika agar mudah dipahami untuk tugas kuliah game dev.`,
+Sertakan komentar penjelasan pada setiap baris logika agar mudah dipahami.`,
 
     fsm: `Tolong buatkan implementasi AI Musuh (Enemy AI 3D) di Godot 4 menggunakan konsep Finite State Machine (FSM):
 1. State IDLE / PATROL: Bergerak secara berkala ke titik patroli acak.
 2. State CHASE: Mendeteksi jika player berada dalam radius tertentu lalu mengejar.
 3. State ATTACK: Menyerang player saat sudah berada di jarak dekat.
-Jelaskan alur transisi antar state ini secara edukatif agar mahasiswa bisa memahaminya.`,
+Jelaskan alur transisi antar state ini secara terstruktur.`,
 
     inventory: `Buatkan sistem Inventory dan Item Pick-up sederhana di Godot 4:
 1. Item di dunia 3D (Area3D) yang dapat diambil saat player menyentuh / menekan tombol E.
@@ -365,7 +358,7 @@ Jelaskan alur transisi antar state ini secara edukatif agar mahasiswa bisa memah
 3. UI sederhana (CanvasLayer) untuk menampilkan daftar item dan jumlahnya di layar.
 Tuliskan kodenya secara modular dan bersih.`,
 
-    laporan: `Tolong buatkan draf dokumentasi / laporan teknis untuk tugas kuliah pengembangan game Godot 4 dari script/fitur yang baru saja kita diskusikan:
+    laporan: `Tolong buatkan draf dokumentasi / laporan teknis pengembangan game Godot 4 dari script/fitur yang baru saja kita diskusikan:
 1. Tujuan dan fungsi modul/skrip.
 2. Struktur Scene dan Node yang digunakan.
 3. Penjelasan fungsi utama (_ready, _physics_process) dan sinyal (signals).
@@ -379,9 +372,6 @@ Tuliskan kodenya secara modular dan bersih.`,
     });
   });
 
-  // -------------------------------------------------------------
-  // SMART TAB: Project Context Loader
-  // -------------------------------------------------------------
   async function loadProjectContext() {
     const projNameEl = document.getElementById('gai-ctx-proj-name');
     const scenesEl = document.getElementById('gai-ctx-scenes-count');
@@ -411,9 +401,6 @@ Tuliskan kodenya secara modular dan bersih.`,
     }
   });
 
-  // -------------------------------------------------------------
-  // SMART TAB: Game Mechanics Wizard
-  // -------------------------------------------------------------
   document.getElementById('gai-btn-generate-wizard').addEventListener('click', () => {
     const genre = document.getElementById('gai-wiz-genre').value;
     const mechanics = [];
@@ -427,7 +414,7 @@ Tuliskan kodenya secara modular dan bersih.`,
     if (document.getElementById('wiz-chk-fsm').checked) mechanics.push('AI Musuh Berbasis Finite State Machine (Patrol, Chase, Attack)');
     if (document.getElementById('wiz-chk-daynight').checked) mechanics.push('Siklus Siang dan Malam (Procedural Sky + Sun Rotation)');
 
-    const prompt = `Saya adalah mahasiswa yang sedang membuat game bergenre "${genre}" di Godot Engine 4.
+    const prompt = `Saya sedang mengembangkan game bergenre "${genre}" di Godot Engine 4.
 Tolong buatkan arsitektur dan script GDScript lengkap untuk mengimplementasikan fitur-fitur berikut:
 
 ${mechanics.map((m, i) => `${i + 1}. ${m}`).join('\n')}
@@ -435,12 +422,11 @@ ${mechanics.map((m, i) => `${i + 1}. ${m}`).join('\n')}
 Persyaratan Khusus:
 - Gunakan standar GDScript Godot 4 terbaru (static typing: float, int, Vector3, dll.).
 - Cantumkan nama file yang disarankan di baris pertama script (contoh: # res://scripts/...).
-- Berikan komentar edukatif yang menjelaskan logika kodenya agar mudah dipelajari untuk tugas kuliah.`;
+- Berikan komentar jelas yang menjelaskan logika kodenya.`;
 
     insertTextToAI(prompt);
   });
 
-  // Debug Error Fixer
   const errorInput = document.getElementById('gai-error-input');
   document.getElementById('gai-btn-fix-error').addEventListener('click', () => {
     const err = errorInput.value.trim();
@@ -448,11 +434,10 @@ Persyaratan Khusus:
       showToast('⚠️ Silakan tempelkan pesan error terlebih dahulu!', true);
       return;
     }
-    const prompt = `Saya menemui error berikut di Godot Engine 4:\n\n\`\`\`text\n${err}\n\`\`\`\n\nTolong bantu mahasiswa ini:\n1. Jelaskan mengapa error ini terjadi dalam bahasa yang mudah dipahami.\n2. Berikan kode perbaikan lengkapnya.\n3. Berikan tips agar tidak mengulangi kesalahan serupa.`;
+    const prompt = `Saya menemui error berikut di Godot Engine 4:\n\n\`\`\`text\n${err}\n\`\`\`\n\nTolong bantu selesaikan masalah ini:\n1. Jelaskan mengapa error ini terjadi dalam bahasa yang mudah dipahami.\n2. Berikan kode perbaikan lengkapnya.\n3. Berikan tips agar tidak mengulangi kesalahan serupa.`;
     insertTextToAI(prompt);
   });
 
-  // Git Sync Logic
   async function updateGitStatus() {
     try {
       const res = await fetch(`${DAEMON_URL}/status`);
@@ -465,7 +450,7 @@ Persyaratan Khusus:
       } else if (data.uncommittedCount > 0 || data.ahead > 0) {
         gitBadge.className = 'gai-badge gai-badge-ahead';
         gitBadge.textContent = 'Ada Perubahan';
-        gitStatusText.textContent = `${data.uncommittedCount} file tugas dimodifikasi`;
+        gitStatusText.textContent = `${data.uncommittedCount} file lokal dimodifikasi`;
       } else {
         gitBadge.className = 'gai-badge gai-badge-synced';
         gitBadge.textContent = 'Tersinkron';
@@ -491,16 +476,16 @@ Persyaratan Khusus:
   });
 
   document.getElementById('gai-btn-push').addEventListener('click', async () => {
-    showToast('⏳ Menyimpan & Push tugas ke GitHub...');
+    showToast('⏳ Menyimpan & Push ke GitHub...');
     try {
       const res = await fetch(`${DAEMON_URL}/push`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: `Update tugas Godot AI mahasiswa [${new Date().toLocaleTimeString()}]` })
+        body: JSON.stringify({ message: `Update proyek Godot AI [${new Date().toLocaleTimeString()}]` })
       });
       const data = await res.json();
       if (data.success) {
-        showToast('🚀 Berhasil push tugas ke GitHub!');
+        showToast('🚀 Berhasil push ke GitHub!');
         updateGitStatus();
       }
     } catch {}
@@ -508,10 +493,9 @@ Persyaratan Khusus:
 
   document.getElementById('gai-btn-sync').addEventListener('click', updateGitStatus);
 
-  // Monitor DOM for code blocks to inject "Apply to Godot" buttons
   setInterval(injectApplyButtonsToCodeBlocks, 1500);
   updateGitStatus();
   setInterval(updateGitStatus, 10000);
 
-  console.log('[Godot AI Smart v2] Loaded.');
+  console.log('[Godot AI v2.0] Loaded.');
 })();

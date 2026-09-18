@@ -28,7 +28,7 @@ document.getElementById('btn-push').addEventListener('click', async () => {
     await fetch(`${DAEMON_URL}/push`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: 'Update tugas kuliah dari popup' })
+      body: JSON.stringify({ message: 'Update proyek dari popup' })
     });
     check();
   } catch {}
