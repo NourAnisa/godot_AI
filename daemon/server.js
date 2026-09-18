@@ -325,9 +325,12 @@ function sanitizeGdscript4(code) {
   c = c.replace(/\bKinematicBody\b/g, 'CharacterBody3D');
   c = c.replace(/\bSpatial\b/g, 'Node3D');
 
-  // Modernize legacy yield -> await
-  c = c.replace(/\byield\s*\(\s*get_tree\s*\(\s*\)\s*\.\s*create_timer\s*\(/g, 'await get_tree().create_timer(');
+  // Modernize legacy yield(obj, "signal") -> await obj.signal
+  c = c.replace(/\byield\s*\(\s*([^,\n]+?)\s*,\s*["']([A-Za-z0-9_]+)["']\s*\)/g, 'await $1.$2');
   c = c.replace(/\byield\s*\(/g, 'await (');
+
+  // Modernize legacy rand_range -> randf_range
+  c = c.replace(/\brand_range\s*\(/g, 'randf_range(');
 
   // Modernize legacy export -> @export
   c = c.replace(/^([ \t]*)export\s*\([^\)]*\)\s*var\s+/gm, '$1@export var ');
