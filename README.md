@@ -1,4 +1,4 @@
-# 🎮 Godot AI v2.0 - Game Development Toolkit & Assistant
+# 🎮 Godot AI v3.0 Pro Studio - Game Development Toolkit & Assistant
 
 Toolkit tingkat lanjut berbasis **Browser Extension + Smart Sync Daemon + Godot 4 Starter Kit** yang dirancang untuk mempermudah dan mempercepat alur kerja pengembangan game di **Godot Engine 4** dengan bantuan kecerdasan buatan (**ChatGPT, Claude, DeepSeek, dan Google Gemini**).
 
@@ -6,30 +6,47 @@ Repository GitHub: [https://github.com/NourAnisa/godot_AI](https://github.com/No
 
 ---
 
-## ⚡ Fitur Cerdas (Smart AI Features)
+## ⚡ Fitur Utama v3.0 Pro Studio
 
-### 1. ⚡ 1-Click "Pasang ke Godot" (Apply to Godot)
-- Di antarmuka web AI (ChatGPT, Claude, DeepSeek, Gemini), tombol **`⚡ Pasang ke Godot`** akan otomatis muncul di pojok atas setiap blok kode GDScript yang dibuatkan oleh AI.
-- Sekali klik, kodenya **langsung ditulis ke file di folder proyek Godot laptopmu** dan otomatis ter-reload di editor Godot! Tidak perlu lagi repot copy-paste manual.
+### 1. ▶️ 1-Click Game Runner & Process Controller
+- Jalankan dan uji game Godot langsung dari tab browser chat AI tanpa perlu berpindah jendela aplikasi.
+- Tombol **`▶ Play`** meluncurkan executable Godot 4 dengan path scene aktif.
+- Tombol **`⏹ Stop`** mematikan proses game Godot dengan sekali klik saat pengujian selesai.
+- Status proses game disinkronkan secara real-time via status polling port 32124.
 
-### 2. 🧠 Project Context Scanner (Kirim Konteks Proyek ke AI)
-- Tombol **`📋 Kirim Konteks Proyek ke AI`** di tab Konteks:
-  - Memindai seluruh scene (`main.tscn`), node tree, daftar script, kelas, dan variabel `@export` yang ada di proyek Godotmu.
-  - Memasukkan ringkasan struktur proyek secara otomatis ke chatbox AI.
-  - Hasilnya: Jawaban dan kode dari AI akan **100% akurat** dan menyambung dengan nama node serta variabel yang sudah ada di gamemu!
+### 2. 🌳 Visual Scene Tree Hierarchy Inspector
+- Memindai file `.tscn` aktif dan menampilkan hierarki pohon node secara interaktif dengan ikon khusus (🏃 *CharacterBody3D*, 📷 *Camera3D*, ☀️ *DirectionalLight3D*, 📦 *CollisionShape3D*, 🔷 *MeshInstance3D*, dsb.).
+- Klik salah satu node untuk langsung memasukkan instruksi kontekstual ke AI agar AI membuatkan script GDScript yang presisi untuk node tersebut.
+- Tombol **`📋 Masukkan Konteks Proyek Lengkap ke AI`** untuk mengirim seluruh arsitektur scene & script ke AI.
 
-### 3. 🎮 Interactive Game Mechanics Wizard
-- Form pembuat spesifikasi game otomatis:
-  - **Pilih Genre**: 3D Survival, 3D Platformer, FPS/TPS, 2D RPG.
-  - **Centang Mekanik**: Sprint & Stamina Bar, Double Jump, Wall Run, Dash, Health System UI, AI Enemy FSM, Day/Night Sky, Inventory 3D.
-  - Klik **`✨ Buat Prompt Spesifikasi Otomatis`** untuk menghasilkan prompt rekayasa game berstandar profesional.
+### 3. 🎨 Built-in Shader Presets Gallery
+Koleksi shader Godot 4 berkualitas tinggi yang siap dipasang ke dalam game hanya dengan 1 kali klik:
+- **🎨 Toon Cel-Shading**: Shading gaya anime/kartun dengan step band pencahayaan dan efek Rim Light edge glow.
+- **🌿 Wind Sway Grass**: Shader rumput alami yang bergoyang tertiup angin menggunakan vertex displacement dan per-blade bending.
+- **🌊 Stylized Water Surface**: Permukaan air dinamis dengan gelombang trigonometrik, transparansi, dan refleksi specular.
+- Setiap shader dilengkapi tombol **`⚡ Terapkan`** (menulis langsung ke `res://shaders/*.gdshader`) dan tombol **`💬 Tanya AI`** untuk konsultasi modifikasi shader.
 
-### 4. 🐞 Godot Debugger Error Fixer
-- Kotak khusus untuk menempelkan pesan error merah dari konsol debugger Godot.
-- Sekali klik langsung memformat pertanyaan konsultasi agar AI menjelaskan akar masalah dan memberikan kode perbaikannya.
+### 4. ⚡ 1-Click "Terapkan ke Godot" (Apply to Godot) pada Code Block
+- Tombol aksi **`⚡ Terapkan ke Godot`** otomatis diinjeksi di atas setiap blok kode GDScript atau GDShader yang dihasilkan AI di ChatGPT, Claude, DeepSeek, dan Gemini.
+- Otomatis mendeteksi nama file target dari header komentar (`# res://scripts/...`) atau class name, menulis ke folder lokal, dan langsung melakukan Git commit.
 
-### 5. 🔄 1-Click Git & Auto-Sync
-- Tombol `⬇️ Pull dari AI` dan `⬆️ Push Perubahan` tanpa perlu mengetik baris perintah Git di terminal.
+### 5. 🐙 Git Sync & Commit Log Timeline
+- Panel Git interaktif dengan indikator status sinkronisasi (*Tersinkron*, *Update AI Siap Di-pull*, *File Lokal Diubah*, atau *Offline*).
+- Riwayat commit interaktif (**Commit Timeline**) yang menampilkan hash, author, waktu relatif, dan pesan commit terbaru.
+- Tombol 1-Click **`⬇️ Pull AI`**, **`⬆️ Push`**, dan **`🔄 Refresh Status`**.
+
+### 6. 🧙 Game Mechanics Wizard
+- Generator spesifikasi gameplay otomatis:
+  - **Pilih Genre**: Action RPG 3D, Open World Survival, Platformer 3D, FPS / Shooter, Roguelike Dungeon, Horror Atmosphere.
+  - **Pilih Mekanik**: Sprint & Stamina, Double Jump, Dash/Dodge, Crouch Collision, HP & Health Bar UI, 3D Inventory, Enemy FSM AI, Siklus Siang & Malam.
+  - Menghasilkan rancangan arsitektur game dan kode GDScript standar Godot 4.
+
+### 7. 🩺 Debug & Error Fixer
+- Kotak analisis error debugger Godot: tempelkan stack trace error merah, dan AI akan menganalisis penyebab, memberikan kode solusi, dan tips pencegahan.
+
+### 8. 📁 Multi-Project Switcher & Custom Path
+- Mendukung peralihan instan antara berbagai proyek (misalnya `godot_ai` dan `fading_dawn`).
+- Pengguna dapat menentukan sendiri path folder lokal di laptop dan URL repositori GitHub melalui tab **⚙️ Proyek** atau popup ekstensi.
 
 ---
 
@@ -41,7 +58,7 @@ Repository GitHub: [https://github.com/NourAnisa/godot_AI](https://github.com/No
    - Brave: `brave://extensions`
    - Edge: `edge://extensions`
 2. Aktifkan **Developer mode** di pojok kanan atas.
-3. Klik **Load unpacked** (atau klik tombol reload jika sudah terpasang) dan pilih folder:
+3. Klik **Load unpacked** (atau klik tombol **Reload 🔄** jika sudah terpasang) dan pilih folder:
    ```text
    C:\Users\Nor Anisa\godot_AI\extension
    ```
@@ -53,7 +70,7 @@ Repository GitHub: [https://github.com/NourAnisa/godot_AI](https://github.com/No
 ### 3. Membuka Proyek di Godot 4
 1. Buka Godot Engine 4.
 2. Import file `C:\Users\Nor Anisa\godot_AI\godot_project\project.godot`.
-3. Tekan **F5** untuk langsung menguji karakter, musuh AI, dan item collectible!
+3. Tekan tombol **`▶ Play`** langsung dari browser AI untuk mulai bermain!
 
 ---
 
@@ -61,22 +78,28 @@ Repository GitHub: [https://github.com/NourAnisa/godot_AI](https://github.com/No
 
 ```text
 godot_AI/
-├── extension/          # Ekstensi browser v2.0 (ChatGPT, Claude, DeepSeek, Gemini)
-│   ├── content.js      # Injeksi tombol "Apply to Godot", Wizard, & Context Scanner
-│   ├── styles.css      # Desain tema gelap modern
-│   ├── popup.html
-│   └── manifest.json
+├── extension/          # Ekstensi browser v3.0 Pro Studio (ChatGPT, Claude, DeepSeek, Gemini)
+│   ├── content.js      # Game Runner, Visual Scene Tree, Shaders, Code Injector, Wizard
+│   ├── styles.css      # Desain tema gelap modern (Glassmorphism & Neon accents)
+│   ├── popup.html      # Popup konfigurasi proyek & status sync
+│   ├── popup.js        # Controller popup ekstensi
+│   └── manifest.json   # Manifest V3
 ├── daemon/             # Smart Sync Daemon (Node.js) port 32124
-│   ├── server.js       # Endpoints: /project-context, /apply-code, /pull, /push
-│   └── config.json
+│   ├── server.js       # Game Runner, Scene Tree Parser, Git Log, Context Scanner, Auto-Sync
+│   └── config.json     # Konfigurasi multi-project & executable Godot
 ├── godot_project/      # Template proyek Godot 4 siap pakai
-│   ├── scenes/main.tscn
+│   ├── scenes/
+│   │   └── main.tscn   # Scene utama 3D dengan Player, Musuh AI, Item, & Lighting
 │   ├── scripts/
 │   │   ├── player_controller_3d.gd  # Karakter 3D (kinematika, gravitasi, lerp)
 │   │   ├── simple_enemy_ai.gd       # AI Musuh FSM (Patrol, Chase, Attack)
 │   │   └── item_pickup.gd           # Interaksi 3D & Sinyal
+│   ├── shaders/        # Preset Shader Godot 4
+│   │   ├── toon_shading.gdshader    # Toon Cel-Shading + Rim Light
+│   │   ├── wind_grass.gdshader      # Vertex Wind Sway Grass
+│   │   └── stylized_water.gdshader  # Stylized Water Surface
 │   └── addons/godot_ai/             # Addon toolbar di dalam Godot
-├── start-sync.bat
-├── stop-sync.bat
+├── start-sync.bat      # Script peluncur daemon
+├── stop-sync.bat       # Script penghenti daemon
 └── README.md
 ```

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Godot AI - Game Dev Assistant",
-  "version": "2.0.0",
-  "description": "Asisten pengembangan game Godot bersama AI (ChatGPT, Claude, DeepSeek, Gemini) dengan 1-Click Apply to Godot, Project Context Scanner, dan Git Auto-Sync.",
+  "version": "3.0.0",
+  "description": "Asisten pengembangan game Godot bersama AI (ChatGPT, Claude, DeepSeek, Gemini) dengan 1-Click Game Runner, Visual Scene Tree, Preset Shaders, dan Git Auto-Sync.",
   "permissions": [
     "storage"
   ],
