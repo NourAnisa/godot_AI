@@ -145,8 +145,7 @@ function loadConfig() {
     console.error("Config error:", e);
   }
 
-  // SELF-HEALING / PORTABLE FALLBACK:
-  // If localPath doesn't exist on this computer, automatically reset to REPO_ROOT!
+  // Self-healing path fallbacks
   if (!conf.localPath || !fs.existsSync(conf.localPath)) {
     conf.localPath = REPO_ROOT;
   }
@@ -163,11 +162,11 @@ function loadConfig() {
     conf.godotExe = detectedGodot || "";
   }
 
-  // Ensure projects array has valid paths
   if (Array.isArray(conf.projects)) {
     conf.projects = conf.projects.filter(p => p.id !== 'fading_dawn');
     const gai = conf.projects.find(p => p.id === 'godot_ai');
     if (gai) {
+      gai.name = "Proyek Aktif";
       if (!gai.localPath || !fs.existsSync(gai.localPath)) gai.localPath = REPO_ROOT;
       if (!gai.godotProjectPath || !fs.existsSync(gai.godotProjectPath)) gai.godotProjectPath = path.join(REPO_ROOT, 'godot_project');
       if (!gai.repoUrl) gai.repoUrl = detectedRepo;
@@ -212,9 +211,41 @@ function runGit(args, cwd = config.localPath) {
 }
 
 // -------------------------------------------------------------
-// V3.0 PRO FEATURE 1: 1-Click Game Runner & Process Controller
+// V3.5 FEATURE 1: Live Godot Console Streamer & Error Interceptor
 // -------------------------------------------------------------
 let activeGameProcess = null;
+let consoleLogs = [];
+const MAX_CONSOLE_LOGS = 250;
+
+function addConsoleLog(type, text) {
+  const clean = (text || '').toString().trim();
+  if (!clean) return;
+
+  const lines = clean.split(/\r?\n/).filter(Boolean);
+  lines.forEach(line => {
+    const isError = type === 'stderr' ||
+                    line.includes('ERROR:') ||
+                    line.includes('SCRIPT ERROR:') ||
+                    line.includes('USER ERROR:') ||
+                    line.includes('Invalid') ||
+                    line.includes('Null') ||
+                    line.includes('Crash');
+    const isWarning = line.includes('WARNING:') || line.includes('USER WARNING:');
+
+    const entry = {
+      id: Date.now() + Math.random().toString(36).substring(2, 6),
+      time: new Date().toLocaleTimeString(),
+      type,
+      message: line,
+      isError,
+      isWarning
+    };
+
+    consoleLogs.push(entry);
+    if (consoleLogs.length > MAX_CONSOLE_LOGS) consoleLogs.shift();
+    broadcast('console-log', entry);
+  });
+}
 
 function isGameRunning() {
   return activeGameProcess !== null && !activeGameProcess.killed;
@@ -238,17 +269,24 @@ function runGame() {
 
   const projDir = resolveGodotProjectDir();
   console.log(`[Game Runner] Meluncurkan game: "${resolvedGodot}" --path "${projDir}"`);
+  addConsoleLog('stdout', `[Game Runner] Meluncurkan game: ${path.basename(resolvedGodot)} di ${path.basename(projDir)}...`);
 
   try {
     activeGameProcess = spawn(resolvedGodot, ['--path', projDir], {
-      detached: true,
-      stdio: 'ignore'
+      detached: false,
+      stdio: ['ignore', 'pipe', 'pipe']
     });
 
-    activeGameProcess.unref();
+    if (activeGameProcess.stdout) {
+      activeGameProcess.stdout.on('data', (d) => addConsoleLog('stdout', d));
+    }
+    if (activeGameProcess.stderr) {
+      activeGameProcess.stderr.on('data', (d) => addConsoleLog('stderr', d));
+    }
 
-    activeGameProcess.on('exit', () => {
-      console.log('[Game Runner] Game process selesai.');
+    activeGameProcess.on('exit', (code) => {
+      console.log('[Game Runner] Game process selesai dengan exit code:', code);
+      addConsoleLog('stdout', `[Game Runner] Game dihentikan (Exit code: ${code || 0}).`);
       activeGameProcess = null;
       broadcast('game-status', { running: false });
     });
@@ -257,6 +295,7 @@ function runGame() {
     return { success: true, pid: activeGameProcess.pid };
   } catch (err) {
     console.error("[Game Runner Error]", err);
+    addConsoleLog('stderr', `[Game Runner Error] ${err.message}`);
     return { success: false, error: err.message };
   }
 }
@@ -269,8 +308,131 @@ function stopGame() {
     activeGameProcess = null;
   }
   exec('taskkill /F /IM Godot_v4* /FI "WINDOWTITLE ne *Godot Engine*"', () => {});
+  addConsoleLog('stdout', '[Game Runner] Perintah stop dikirim.');
   broadcast('game-status', { running: false });
   return { success: true };
+}
+
+// -------------------------------------------------------------
+// V3.5 FEATURE 2: Godot 4 Syntax Sanitizer & Modernizer
+// -------------------------------------------------------------
+function sanitizeGdscript4(code) {
+  let c = code;
+
+  // Modernize legacy KinematicBody -> CharacterBody3D
+  c = c.replace(/\bKinematicBody3D\b/g, 'CharacterBody3D');
+  c = c.replace(/\bKinematicBody2D\b/g, 'CharacterBody2D');
+  c = c.replace(/\bKinematicBody\b/g, 'CharacterBody3D');
+  c = c.replace(/\bSpatial\b/g, 'Node3D');
+
+  // Modernize legacy yield -> await
+  c = c.replace(/\byield\s*\(\s*get_tree\s*\(\s*\)\s*\.\s*create_timer\s*\(/g, 'await get_tree().create_timer(');
+  c = c.replace(/\byield\s*\(/g, 'await (');
+
+  // Modernize legacy export -> @export
+  c = c.replace(/^([ \t]*)export\s*\([^\)]*\)\s*var\s+/gm, '$1@export var ');
+  c = c.replace(/^([ \t]*)export\s+var\s+/gm, '$1@export var ');
+
+  // Modernize legacy onready -> @onready
+  c = c.replace(/^([ \t]*)onready\s+var\s+/gm, '$1@onready var ');
+
+  // Modernize legacy instance() -> instantiate()
+  c = c.replace(/\.instance\s*\(\s*\)/g, '.instantiate()');
+
+  // Modernize linear_interpolate -> lerp
+  c = c.replace(/\.linear_interpolate\s*\(/g, '.lerp(');
+
+  return c;
+}
+
+// -------------------------------------------------------------
+// V3.5 FEATURE 3: 1-Click Backup & Rollback System
+// -------------------------------------------------------------
+let lastBackup = null;
+
+function backupFileBeforeWrite(targetPath, filename) {
+  if (fs.existsSync(targetPath)) {
+    const backupDir = path.join(path.dirname(targetPath), '.godot_ai_backups');
+    if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+    const backupFilename = `${path.basename(targetPath)}.${Date.now()}.bak`;
+    const backupPath = path.join(backupDir, backupFilename);
+    fs.copyFileSync(targetPath, backupPath);
+    lastBackup = {
+      targetPath,
+      backupPath,
+      filename,
+      timestamp: new Date().toLocaleTimeString()
+    };
+  }
+}
+
+async function rollbackLastBackup() {
+  if (!lastBackup || !fs.existsSync(lastBackup.backupPath)) {
+    return { success: false, error: "Tidak ada riwayat backup sebelumnya untuk di-rollback." };
+  }
+  fs.copyFileSync(lastBackup.backupPath, lastBackup.targetPath);
+  const restored = lastBackup.filename;
+  const time = lastBackup.timestamp;
+  lastBackup = null;
+
+  await runGit(['add', '.']);
+  await runGit(['commit', '-m', `Rollback changes on ${restored} to previous version [${time}]`]);
+  runGit(['push', 'origin', 'main']).catch(() => {});
+
+  return { success: true, restoredFile: restored };
+}
+
+// -------------------------------------------------------------
+// V3.5 FEATURE 4: InputMap Auto-Injector
+// -------------------------------------------------------------
+function injectInputActions(actions) {
+  if (!actions || !Array.isArray(actions) || actions.length === 0) {
+    return { success: false, error: "Daftar aksi input kosong." };
+  }
+
+  const projDir = resolveGodotProjectDir();
+  const projGodot = path.join(projDir, 'project.godot');
+  if (!fs.existsSync(projGodot)) {
+    return { success: false, error: "File project.godot tidak ditemukan di " + projDir };
+  }
+
+  let content = fs.readFileSync(projGodot, 'utf8');
+
+  const KEY_MAP = {
+    jump: { key: 32, label: "Space" },
+    sprint: { key: 4194325, label: "Shift" },
+    dash: { key: 81, label: "Q" },
+    crouch: { key: 67, label: "C" },
+    interact: { key: 69, label: "E" },
+    attack: { key: 32, label: "Space / Click" },
+    reload: { key: 82, label: "R" },
+    use: { key: 70, label: "F" }
+  };
+
+  let added = [];
+  for (const act of actions) {
+    const cleanAct = act.toLowerCase().trim().replace(/[^a-z0-9_]/g, '');
+    if (!cleanAct) continue;
+
+    const regex = new RegExp(`^${cleanAct}=`, 'm');
+    if (regex.test(content)) continue;
+
+    const mapped = KEY_MAP[cleanAct] || { key: 32, label: cleanAct };
+    const inputBlock = `${cleanAct}={\n"deadzone": 0.5,\n"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":${mapped.key},"physical_keycode":0,"key_label":0,"unicode":${mapped.key < 256 ? mapped.key : 0},"echo":false,"script":null)\n]\n}\n`;
+
+    if (!content.includes('[input]')) {
+      content += '\n[input]\n\n' + inputBlock;
+    } else {
+      content = content.replace('[input]\n', `[input]\n\n${inputBlock}`);
+    }
+    added.push(`${cleanAct} (${mapped.label})`);
+  }
+
+  if (added.length > 0) {
+    fs.writeFileSync(projGodot, content, 'utf8');
+  }
+
+  return { success: true, addedActions: added };
 }
 
 // -------------------------------------------------------------
@@ -369,7 +531,7 @@ function getProjectContext() {
   function scanScripts(dir, rel = '') {
     if (!fs.existsSync(dir)) return;
     for (const item of fs.readdirSync(dir)) {
-      if (item === '.godot' || item === '.git') continue;
+      if (item === '.godot' || item === '.git' || item === '.godot_ai_backups') continue;
       const full = path.join(dir, item);
       if (fs.statSync(full).isDirectory()) {
         scanScripts(full, path.join(rel, item));
@@ -445,6 +607,17 @@ async function applyCodeToFile(filename, code, commitMsg) {
     cleanCode = cleanCode.replace(/^```[a-z0-9_-]*\r?\n/, '').replace(/\r?\n```$/, '');
   }
 
+  // Sanitize GDScript for Godot 4
+  let wasSanitized = false;
+  if (cleanFilename.endsWith('.gd')) {
+    const original = cleanCode;
+    cleanCode = sanitizeGdscript4(cleanCode);
+    if (cleanCode !== original) wasSanitized = true;
+  }
+
+  // Backup prior file version
+  backupFileBeforeWrite(targetPath, cleanFilename);
+
   fs.writeFileSync(targetPath, cleanCode, { encoding: 'utf8' });
 
   const msg = commitMsg || `Apply AI code to ${cleanFilename} via Godot AI Assistant`;
@@ -456,7 +629,9 @@ async function applyCodeToFile(filename, code, commitMsg) {
     success: true,
     file: `res://${cleanFilename.replace(/\\/g, '/')}`,
     localPath: targetPath,
-    bytesWritten: Buffer.byteLength(cleanCode, 'utf8')
+    bytesWritten: Buffer.byteLength(cleanCode, 'utf8'),
+    sanitized: wasSanitized,
+    hasBackup: !!lastBackup
   };
 }
 
@@ -519,6 +694,8 @@ async function getStatus() {
     godotExe: resolvedGodot || "",
     godotDetected: !!(resolvedGodot && fs.existsSync(resolvedGodot)),
     gitPath: resolvedGit,
+    hasRollback: !!lastBackup,
+    lastBackupFile: lastBackup ? lastBackup.filename : null,
     synced: behind === 0 && ahead === 0,
     behind,
     ahead,
@@ -602,11 +779,24 @@ const server = http.createServer(async (req, res) => {
     return res.end(JSON.stringify({
       ok: true,
       name: "Godot-AI-Studio-Daemon",
-      version: "3.0.0",
+      version: "3.5.0",
       godotDetected: !!(resolvedGodot && fs.existsSync(resolvedGodot)),
       godotExe: resolvedGodot,
-      localPath: config.localPath
+      localPath: config.localPath,
+      gameRunning: isGameRunning()
     }));
+  }
+
+  // CONSOLE LOGS & STREAMING
+  if (req.method === 'GET' && parsedUrl.pathname === '/console-logs') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify(consoleLogs));
+  }
+
+  if (req.method === 'POST' && parsedUrl.pathname === '/clear-console') {
+    consoleLogs = [];
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ success: true }));
   }
 
   // GAME RUNNER ENDPOINTS
@@ -629,6 +819,31 @@ const server = http.createServer(async (req, res) => {
       godotDetected: !!(resolvedGodot && fs.existsSync(resolvedGodot)),
       godotExe: resolvedGodot
     }));
+  }
+
+  // ROLLBACK ENDPOINT
+  if (req.method === 'POST' && parsedUrl.pathname === '/rollback') {
+    const result = await rollbackLastBackup();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify(result));
+  }
+
+  // INPUT MAP INJECTOR ENDPOINT
+  if (req.method === 'POST' && parsedUrl.pathname === '/inject-inputs') {
+    let body = '';
+    req.on('data', c => { body += c; });
+    req.on('end', async () => {
+      try {
+        const payload = JSON.parse(body);
+        const result = injectInputActions(payload.actions || []);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify(result));
+      } catch (e) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
   }
 
   // GIT LOG ENDPOINT
@@ -800,7 +1015,7 @@ const server = http.createServer(async (req, res) => {
 
 const PORT = config.port || 32124;
 server.listen(PORT, '127.0.0.1', () => {
-  console.log(`[Godot AI Studio Daemon v3.0] Berjalan di http://127.0.0.1:${PORT}`);
+  console.log(`[Godot AI Studio Daemon v3.5] Berjalan di http://127.0.0.1:${PORT}`);
   console.log(`Folder Proyek : ${config.localPath}`);
   console.log(`Executable Git: ${resolvedGit}`);
   console.log(`Executable Godot: ${resolvedGodot || '(Belum terdeteksi - dapat diatur di tab Proyek)'}`);
