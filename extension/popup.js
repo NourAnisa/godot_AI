@@ -4,6 +4,7 @@ const gitStatus = document.getElementById('git-status');
 const selProjects = document.getElementById('sel-projects');
 const inpLocalPath = document.getElementById('inp-local-path');
 const inpRepoUrl = document.getElementById('inp-repo-url');
+const inpGodotExe = document.getElementById('inp-godot-exe');
 const btnSaveConfig = document.getElementById('btn-save-config');
 const btnPull = document.getElementById('btn-pull');
 const btnPush = document.getElementById('btn-push');
@@ -23,6 +24,7 @@ async function loadConfig() {
 
     inpLocalPath.value = configCache.localPath || '';
     inpRepoUrl.value = configCache.repoUrl || '';
+    if (inpGodotExe) inpGodotExe.value = configCache.godotExe || '';
 
     // Populate dropdown
     if (data.projects && data.projects.length) {
@@ -97,6 +99,9 @@ btnSaveConfig.addEventListener('click', async () => {
       repoUrl,
       projectName: localPath.split(/[\\\/]/).filter(Boolean).pop() || 'MyGame'
     };
+    if (inpGodotExe && inpGodotExe.value.trim()) {
+      payload.godotExe = inpGodotExe.value.trim();
+    }
 
     const res = await fetch(`${DAEMON_URL}/config`, {
       method: 'POST',

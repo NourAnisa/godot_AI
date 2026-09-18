@@ -1,10 +1,10 @@
 {
   "port": 32124,
-  "localPath": "C:\\Users\\Nor Anisa\\godot_AI",
-  "godotProjectPath": "C:\\Users\\Nor Anisa\\godot_AI\\godot_project",
-  "repoUrl": "https://github.com/NourAnisa/godot_AI.git",
-  "gitPath": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\IDE\\CommonExtensions\\Microsoft\\TeamFoundation\\Team Explorer\\Git\\cmd\\git.exe",
-  "godotExe": "C:\\Users\\Nor Anisa\\Downloads\\Godot_v4.7.2-stable_win64.exe\\Godot_v4.7.2-stable_win64.exe",
+  "localPath": "",
+  "godotProjectPath": "",
+  "repoUrl": "",
+  "gitPath": "git",
+  "godotExe": "",
   "autoSync": true,
   "autoSyncInterval": 10,
   "activeProject": "godot_ai",
@@ -12,9 +12,9 @@
     {
       "id": "godot_ai",
       "name": "godot_AI (Starter Kit)",
-      "localPath": "C:\\Users\\Nor Anisa\\godot_AI",
-      "godotProjectPath": "C:\\Users\\Nor Anisa\\godot_AI\\godot_project",
-      "repoUrl": "https://github.com/NourAnisa/godot_AI.git"
+      "localPath": "",
+      "godotProjectPath": "",
+      "repoUrl": ""
     }
   ]
 }

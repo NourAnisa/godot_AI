@@ -372,8 +372,11 @@ void fragment() {
           <label style="font-size:11px; color:#94a3b8; display:block; margin-bottom:2px;">Folder Proyek di Laptop:</label>
           <input type="text" id="gai-inp-local-path" class="gai-select" style="margin-bottom:6px;" />
 
-          <label style="font-size:11px; color:#94a3b8; display:block; margin-bottom:2px;">URL Repository GitHub:</label>
-          <input type="text" id="gai-inp-repo-url" class="gai-select" style="margin-bottom:8px;" />
+          <label style="font-size:11px; color:#94a3b8; display:block; margin-bottom:2px;">Executable Godot 4 (.exe):</label>
+          <div style="display:flex; gap:6px; margin-bottom:8px; align-items:center;">
+            <input type="text" id="gai-inp-godot-exe" class="gai-select" style="flex:1;" placeholder="Otomatis terdeteksi atau C:\Path\Godot.exe" />
+            <span id="gai-godot-badge" style="font-size:10px; padding:3px 6px; border-radius:4px; white-space:nowrap; background:rgba(16,185,129,0.2); color:#34d399;">Terdeteksi ✅</span>
+          </div>
 
           <div style="display:flex; gap:6px;">
             <button id="gai-btn-save-project" class="gai-btn-primary" style="background:#10b981; flex:1;">
@@ -885,6 +888,8 @@ Tolong bantu selesaikan masalah ini:
   const selProject = document.getElementById('gai-sel-project');
   const inpLocalPath = document.getElementById('gai-inp-local-path');
   const inpRepoUrl = document.getElementById('gai-inp-repo-url');
+  const inpGodotExe = document.getElementById('gai-inp-godot-exe');
+  const godotBadge = document.getElementById('gai-godot-badge');
   const btnSaveProject = document.getElementById('gai-btn-save-project');
   const btnDelProject = document.getElementById('gai-btn-del-project');
   const footerProj = document.getElementById('gai-footer-proj');
@@ -905,6 +910,18 @@ Tolong bantu selesaikan masalah ini:
 
       inpLocalPath.value = activeConfig.localPath || '';
       inpRepoUrl.value = activeConfig.repoUrl || '';
+      if (inpGodotExe) inpGodotExe.value = activeConfig.godotExe || '';
+      if (godotBadge) {
+        if (data.godotDetected) {
+          godotBadge.textContent = 'Terdeteksi ✅';
+          godotBadge.style.background = 'rgba(16,185,129,0.2)';
+          godotBadge.style.color = '#34d399';
+        } else {
+          godotBadge.textContent = 'Belum Ada ⚠️';
+          godotBadge.style.background = 'rgba(239,68,68,0.2)';
+          godotBadge.style.color = '#f87171';
+        }
+      }
       footerProj.textContent = (activeConfig.localPath || '').split(/[\\\/]/).pop() || 'Godot 4.x';
 
       if (data.projects && data.projects.length) {
@@ -989,6 +1006,9 @@ Tolong bantu selesaikan masalah ini:
         repoUrl,
         projectName: localPath.split(/[\\\/]/).filter(Boolean).pop() || 'MyGame'
       };
+      if (inpGodotExe && inpGodotExe.value.trim()) {
+        payload.godotExe = inpGodotExe.value.trim();
+      }
       if (selectedId !== 'custom') {
         payload.switchProjectId = selectedId;
       }

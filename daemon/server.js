@@ -1,18 +1,127 @@
 const http = require('http');
-const { execFile, spawn, exec } = require('child_process');
+const { execFile, execFileSync, spawn, exec, execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
+const REPO_ROOT = process.argv[2] ? path.resolve(process.argv[2]) : path.resolve(__dirname, '..');
 const CONFIG_FILE = path.join(__dirname, 'config.json');
 
+// -------------------------------------------------------------
+// UNIVERSAL DETECTORS: Auto-detect Git & Godot on Any Computer
+// -------------------------------------------------------------
+function isGitWorking(gitPath) {
+  if (!gitPath) return false;
+  try {
+    execFileSync(gitPath, ['--version'], { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function findGitExecutable() {
+  const candidates = [
+    'C:\\Program Files\\Git\\cmd\\git.exe',
+    'C:\\Program Files\\Git\\bin\\git.exe',
+    'C:\\Program Files (x86)\\Git\\cmd\\git.exe',
+    path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Git', 'cmd', 'git.exe'),
+    'C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\IDE\\CommonExtensions\\Microsoft\\TeamFoundation\\Team Explorer\\Git\\cmd\\git.exe',
+    'C:\\Program Files\\Microsoft Visual Studio\\2022\\Professional\\Common7\\IDE\\CommonExtensions\\Microsoft\\TeamFoundation\\Team Explorer\\Git\\cmd\\git.exe',
+    'C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\Common7\\IDE\\CommonExtensions\\Microsoft\\TeamFoundation\\Team Explorer\\Git\\cmd\\git.exe'
+  ];
+
+  const ghDir = path.join(process.env.LOCALAPPDATA || '', 'GitHubDesktop');
+  if (fs.existsSync(ghDir)) {
+    try {
+      for (const f of fs.readdirSync(ghDir)) {
+        if (f.startsWith('app-')) {
+          candidates.push(path.join(ghDir, f, 'resources', 'app', 'git', 'cmd', 'git.exe'));
+        }
+      }
+    } catch {}
+  }
+
+  for (const c of candidates) {
+    if (fs.existsSync(c) && isGitWorking(c)) return c;
+  }
+
+  try {
+    const out = execSync('where git', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+    if (out) {
+      const first = out.split(/\r?\n/)[0].trim();
+      if (isGitWorking(first)) return first;
+    }
+  } catch {}
+
+  if (isGitWorking('git')) return 'git';
+  return 'git';
+}
+
+function findGodotExecutable() {
+  try {
+    const out = execSync('where godot', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+    if (out) return out.split(/\r?\n/)[0].trim();
+  } catch {}
+  try {
+    const out = execSync('where godot4', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+    if (out) return out.split(/\r?\n/)[0].trim();
+  } catch {}
+
+  const searchDirs = [
+    path.join(process.env.USERPROFILE || '', 'Downloads'),
+    path.join(process.env.USERPROFILE || '', 'Desktop'),
+    'C:\\Program Files\\Godot',
+    'C:\\Program Files (x86)\\Godot',
+    'C:\\Godot',
+    path.join(REPO_ROOT, 'tools'),
+    REPO_ROOT
+  ];
+
+  for (const dir of searchDirs) {
+    if (!fs.existsSync(dir)) continue;
+    try {
+      const items = fs.readdirSync(dir);
+      for (const item of items) {
+        const full = path.join(dir, item);
+        if (item.toLowerCase().startsWith('godot') && item.endsWith('.exe') && !item.toLowerCase().includes('console')) {
+          return full;
+        }
+        if (fs.statSync(full).isDirectory() && item.toLowerCase().startsWith('godot')) {
+          try {
+            const subitems = fs.readdirSync(full);
+            for (const sub of subitems) {
+              if (sub.toLowerCase().startsWith('godot') && sub.endsWith('.exe') && !sub.toLowerCase().includes('console')) {
+                return path.join(full, sub);
+              }
+            }
+          } catch {}
+        }
+      }
+    } catch {}
+  }
+  return '';
+}
+
+function detectRemoteRepoUrl(gitExe) {
+  try {
+    const out = execFileSync(gitExe, ['config', '--get', 'remote.origin.url'], { encoding: 'utf8', cwd: REPO_ROOT }).trim();
+    if (out) return out;
+  } catch {}
+  return "https://github.com/NourAnisa/godot_AI.git";
+}
+
 function loadConfig() {
-  const defaults = {
+  const detectedGit = findGitExecutable();
+  const detectedGodot = findGodotExecutable();
+  const detectedRepo = detectRemoteRepoUrl(detectedGit);
+
+  let conf = {
     port: 32124,
-    localPath: "C:\\Users\\Nor Anisa\\godot_AI",
-    godotProjectPath: "C:\\Users\\Nor Anisa\\godot_AI\\godot_project",
-    repoUrl: "https://github.com/NourAnisa/godot_AI.git",
-    gitPath: "git",
-    godotExe: "C:\\Users\\Nor Anisa\\Downloads\\Godot_v4.7.2-stable_win64.exe\\Godot_v4.7.2-stable_win64.exe",
+    localPath: REPO_ROOT,
+    godotProjectPath: path.join(REPO_ROOT, 'godot_project'),
+    repoUrl: detectedRepo,
+    gitPath: detectedGit,
+    godotExe: detectedGodot,
     autoSync: true,
     autoSyncInterval: 10,
     activeProject: "godot_ai",
@@ -20,36 +129,65 @@ function loadConfig() {
       {
         id: "godot_ai",
         name: "godot_AI (Starter Kit)",
-        localPath: "C:\\Users\\Nor Anisa\\godot_AI",
-        godotProjectPath: "C:\\Users\\Nor Anisa\\godot_AI\\godot_project",
-        repoUrl: "https://github.com/NourAnisa/godot_AI.git"
+        localPath: REPO_ROOT,
+        godotProjectPath: path.join(REPO_ROOT, 'godot_project'),
+        repoUrl: detectedRepo
       }
     ]
   };
+
   try {
     if (fs.existsSync(CONFIG_FILE)) {
-      const data = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
-      return { ...defaults, ...data };
+      const saved = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+      conf = { ...conf, ...saved };
     }
   } catch (e) {
     console.error("Config error:", e);
   }
-  return defaults;
+
+  // SELF-HEALING / PORTABLE FALLBACK:
+  // If localPath doesn't exist on this computer, automatically reset to REPO_ROOT!
+  if (!conf.localPath || !fs.existsSync(conf.localPath)) {
+    conf.localPath = REPO_ROOT;
+  }
+  if (!conf.godotProjectPath || !fs.existsSync(conf.godotProjectPath)) {
+    conf.godotProjectPath = path.join(REPO_ROOT, 'godot_project');
+  }
+  if (!conf.repoUrl) {
+    conf.repoUrl = detectedRepo;
+  }
+  if (!conf.gitPath || !isGitWorking(conf.gitPath)) {
+    conf.gitPath = detectedGit;
+  }
+  if (!conf.godotExe || !fs.existsSync(conf.godotExe)) {
+    conf.godotExe = detectedGodot || "";
+  }
+
+  // Ensure projects array has valid paths
+  if (Array.isArray(conf.projects)) {
+    conf.projects = conf.projects.filter(p => p.id !== 'fading_dawn');
+    const gai = conf.projects.find(p => p.id === 'godot_ai');
+    if (gai) {
+      if (!gai.localPath || !fs.existsSync(gai.localPath)) gai.localPath = REPO_ROOT;
+      if (!gai.godotProjectPath || !fs.existsSync(gai.godotProjectPath)) gai.godotProjectPath = path.join(REPO_ROOT, 'godot_project');
+      if (!gai.repoUrl) gai.repoUrl = detectedRepo;
+    } else {
+      conf.projects.unshift({
+        id: "godot_ai",
+        name: "godot_AI (Starter Kit)",
+        localPath: REPO_ROOT,
+        godotProjectPath: path.join(REPO_ROOT, 'godot_project'),
+        repoUrl: detectedRepo
+      });
+    }
+  }
+
+  return conf;
 }
 
 let config = loadConfig();
-const vsGit = "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\IDE\\CommonExtensions\\Microsoft\\TeamFoundation\\Team Explorer\\Git\\cmd\\git.exe";
 let resolvedGit = config.gitPath;
-if (resolvedGit === 'git' && fs.existsSync(vsGit)) {
-  resolvedGit = vsGit;
-}
-
-// Locate Godot Executable
 let resolvedGodot = config.godotExe;
-const defaultGodotPath = "C:\\Users\\Nor Anisa\\Downloads\\Godot_v4.7.2-stable_win64.exe\\Godot_v4.7.2-stable_win64.exe";
-if (fs.existsSync(defaultGodotPath)) {
-  resolvedGodot = defaultGodotPath;
-}
 
 function resolveGodotProjectDir() {
   if (fs.existsSync(path.join(config.localPath, 'project.godot'))) {
@@ -68,7 +206,7 @@ function runGit(args, cwd = config.localPath) {
       if (error) {
         return resolve({ success: false, error: stderr || stdout || error.message, stdout, stderr, code: error.code });
       }
-      resolve({ success: true, stdout: stdout.trim(), stderr: stderr.trim() });
+      resolve({ success: true, stdout: (stdout || '').trim(), stderr: (stderr || '').trim() });
     });
   });
 }
@@ -87,8 +225,19 @@ function runGame() {
     return { success: true, message: "Game sudah berjalan", pid: activeGameProcess.pid };
   }
 
+  if (!resolvedGodot || !fs.existsSync(resolvedGodot)) {
+    resolvedGodot = findGodotExecutable();
+    if (!resolvedGodot || !fs.existsSync(resolvedGodot)) {
+      return {
+        success: false,
+        error: "Executable Godot 4 (.exe) belum terdeteksi di laptop ini.\n\nTips:\n1. Unduh Godot 4 dari https://godotengine.org\n2. Ekstrak di folder Downloads atau Desktop (akan otomatis terdeteksi!)\n3. Atau masukkan path file Godot.exe di tab '⚙️ Proyek' pada widget browser."
+      };
+    }
+    config.godotExe = resolvedGodot;
+  }
+
   const projDir = resolveGodotProjectDir();
-  console.log(`[Game Runner] Meluncurkan game: ${resolvedGodot} --path "${projDir}"`);
+  console.log(`[Game Runner] Meluncurkan game: "${resolvedGodot}" --path "${projDir}"`);
 
   try {
     activeGameProcess = spawn(resolvedGodot, ['--path', projDir], {
@@ -119,8 +268,7 @@ function stopGame() {
     } catch {}
     activeGameProcess = null;
   }
-  // Also kill any runaway Godot game instances
-  exec('taskkill /F /IM Godot_v4.7.2* /FI "WINDOWTITLE ne *Godot Engine*"', () => {});
+  exec('taskkill /F /IM Godot_v4* /FI "WINDOWTITLE ne *Godot Engine*"', () => {});
   broadcast('game-status', { running: false });
   return { success: true };
 }
@@ -315,7 +463,7 @@ async function applyCodeToFile(filename, code, commitMsg) {
 // -------------------------------------------------------------
 // V3.0 PRO FEATURE 5: Git Log & Timeline
 // -------------------------------------------------------------
-async function getGitLog(count = 6) {
+async function getGitLog(count = 8) {
   const res = await runGit(['log', `-${count}`, '--format=%h|||%an|||%s|||%cr']);
   if (!res.success || !res.stdout) return [];
   return res.stdout.split('\n').filter(Boolean).map(line => {
@@ -328,7 +476,7 @@ const sseClients = new Set();
 function broadcast(event, data) {
   const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
   for (const client of sseClients) {
-    client.write(payload);
+    try { client.write(payload); } catch {}
   }
 }
 
@@ -368,6 +516,9 @@ async function getStatus() {
     activeProject: config.activeProject,
     projects: config.projects || [],
     gameRunning: isGameRunning(),
+    godotExe: resolvedGodot || "",
+    godotDetected: !!(resolvedGodot && fs.existsSync(resolvedGodot)),
+    gitPath: resolvedGit,
     synced: behind === 0 && ahead === 0,
     behind,
     ahead,
@@ -448,7 +599,14 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'GET' && (parsedUrl.pathname === '/' || parsedUrl.pathname === '/health')) {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify({ ok: true, name: "Godot-AI-Studio-Daemon", version: "3.0.0" }));
+    return res.end(JSON.stringify({
+      ok: true,
+      name: "Godot-AI-Studio-Daemon",
+      version: "3.0.0",
+      godotDetected: !!(resolvedGodot && fs.existsSync(resolvedGodot)),
+      godotExe: resolvedGodot,
+      localPath: config.localPath
+    }));
   }
 
   // GAME RUNNER ENDPOINTS
@@ -466,7 +624,11 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'GET' && parsedUrl.pathname === '/game-status') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify({ running: isGameRunning() }));
+    return res.end(JSON.stringify({
+      running: isGameRunning(),
+      godotDetected: !!(resolvedGodot && fs.existsSync(resolvedGodot)),
+      godotExe: resolvedGodot
+    }));
   }
 
   // GIT LOG ENDPOINT
@@ -482,7 +644,9 @@ const server = http.createServer(async (req, res) => {
     return res.end(JSON.stringify({
       config,
       activeProject: config.activeProject,
-      projects: config.projects || []
+      projects: config.projects || [],
+      godotDetected: !!(resolvedGodot && fs.existsSync(resolvedGodot)),
+      godotExe: resolvedGodot
     }));
   }
 
@@ -509,9 +673,9 @@ const server = http.createServer(async (req, res) => {
             const first = config.projects[0] || {
               id: "godot_ai",
               name: "godot_AI (Starter Kit)",
-              localPath: "C:\\Users\\Nor Anisa\\godot_AI",
-              godotProjectPath: "C:\\Users\\Nor Anisa\\godot_AI\\godot_project",
-              repoUrl: "https://github.com/NourAnisa/godot_AI.git"
+              localPath: REPO_ROOT,
+              godotProjectPath: path.join(REPO_ROOT, 'godot_project'),
+              repoUrl: detectRemoteRepoUrl(resolvedGit)
             };
             config.activeProject = first.id;
             config.localPath = first.localPath;
@@ -522,6 +686,15 @@ const server = http.createServer(async (req, res) => {
 
         if (payload.localPath) config.localPath = payload.localPath.trim();
         if (payload.repoUrl) config.repoUrl = payload.repoUrl.trim();
+        if (payload.godotExe) {
+          config.godotExe = payload.godotExe.trim();
+          resolvedGodot = config.godotExe;
+        }
+        if (payload.gitPath) {
+          config.gitPath = payload.gitPath.trim();
+          resolvedGit = config.gitPath;
+        }
+
         if (payload.projectName) {
           const id = payload.projectName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
           if (!config.projects) config.projects = [];
@@ -628,6 +801,7 @@ const server = http.createServer(async (req, res) => {
 const PORT = config.port || 32124;
 server.listen(PORT, '127.0.0.1', () => {
   console.log(`[Godot AI Studio Daemon v3.0] Berjalan di http://127.0.0.1:${PORT}`);
-  console.log(`Folder: ${config.localPath}`);
-  console.log(`Godot:  ${resolvedGodot}`);
+  console.log(`Folder Proyek : ${config.localPath}`);
+  console.log(`Executable Git: ${resolvedGit}`);
+  console.log(`Executable Godot: ${resolvedGodot || '(Belum terdeteksi - dapat diatur di tab Proyek)'}`);
 });

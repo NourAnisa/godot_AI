@@ -50,27 +50,27 @@ Koleksi shader Godot 4 berkualitas tinggi yang siap dipasang ke dalam game hanya
 
 ---
 
-## 🚀 Panduan Instalasi Cepat
+## 🚀 Panduan Penggunaan untuk Siapa Saja (Universal Setup)
 
-### 1. Pasang / Perbarui Ekstensi di Browser
+Aplikasi ini didesain **Plug & Play** (Auto-Detect). Tidak ada konfigurasi rumit yang perlu diatur secara manual.
+
+### 1. Pasang Ekstensi di Browser
 1. Buka halaman ekstensi browser:
-   - Chrome: `chrome://extensions`
-   - Brave: `brave://extensions`
-   - Edge: `edge://extensions`
-2. Aktifkan **Developer mode** di pojok kanan atas.
-3. Klik **Load unpacked** (atau klik tombol **Reload 🔄** jika sudah terpasang) dan pilih folder:
-   ```text
-   C:\Users\Nor Anisa\godot_AI\extension
-   ```
+   * Chrome: `chrome://extensions`
+   * Brave: `brave://extensions`
+   * Edge: `edge://extensions`
+2. Aktifkan saklar **Developer mode** di pojok kanan atas.
+3. Klik tombol **Load unpacked** dan pilih subfolder `extension/` dari folder repositori ini.
 
-### 2. Menjalankan Daemon di Laptop
-- Cukup klik 2x shortcut **`Godot AI Sync`** yang ada di **Desktop** (atau jalankan file `start-sync.bat`).
-- Daemon berjalan di latar belakang pada port `32124`.
+### 2. Jalankan Daemon Sinkronisasi
+* Klik 2x file **`pasang-shortcut-desktop.bat`** untuk otomatis membuat shortcut di Desktop laptopmu.
+* Atau langsung klik 2x file **`start-sync.bat`**.
+* *Catatan*: Pastikan laptopmu sudah memiliki **Node.js** (unduh gratis dari [nodejs.org](https://nodejs.org) jika belum ada). Daemon akan otomatis mendeteksi Git dan Godot Engine 4 di laptopmu!
 
-### 3. Membuka Proyek di Godot 4
-1. Buka Godot Engine 4.
-2. Import file `C:\Users\Nor Anisa\godot_AI\godot_project\project.godot`.
-3. Tekan tombol **`▶ Play`** langsung dari browser AI untuk mulai bermain!
+### 3. Mulai Mengembangkan Game Bersama AI
+1. Buka AI favoritmu di browser (**ChatGPT**, **Claude**, **DeepSeek**, atau **Gemini**).
+2. Widget **Godot AI Studio** akan otomatis muncul di pojok kanan bawah.
+3. Buka proyek `godot_project/project.godot` di Godot Engine 4, atau klik tombol **`▶ Play`** langsung dari browser untuk mulai menguji game!
 
 ---
 
