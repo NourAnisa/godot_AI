@@ -365,7 +365,7 @@ void fragment() {
         <div class="gai-tab-content" id="tab-project" style="display:none;">
           <label style="font-size:11px; color:#94a3b8; display:block; margin-bottom:4px;">Pilih Proyek Aktif:</label>
           <select id="gai-sel-project" class="gai-select" style="margin-bottom:8px;">
-            <option value="godot_ai">godot_AI (Starter Kit)</option>
+            <option value="godot_ai">Proyek Aktif</option>
             <option value="custom">+ Atur Folder / Repo Lain</option>
           </select>
 

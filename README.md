@@ -1,6 +1,6 @@
 # 🎮 Godot AI v3.0 Pro Studio - Game Development Toolkit & Assistant
 
-Toolkit tingkat lanjut berbasis **Browser Extension + Smart Sync Daemon + Godot 4 Starter Kit** yang dirancang untuk mempermudah dan mempercepat alur kerja pengembangan game di **Godot Engine 4** dengan bantuan kecerdasan buatan (**ChatGPT, Claude, DeepSeek, dan Google Gemini**).
+Toolkit tingkat lanjut berbasis **Browser Extension + Smart Sync Daemon + Godot 4 Integration** yang dirancang untuk mempermudah dan mempercepat alur kerja pengembangan game di **Godot Engine 4** dengan bantuan kecerdasan buatan (**ChatGPT, Claude, DeepSeek, dan Google Gemini**).
 
 Repository GitHub: [https://github.com/NourAnisa/godot_AI](https://github.com/NourAnisa/godot_AI)
 

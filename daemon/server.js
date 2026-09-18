@@ -128,7 +128,7 @@ function loadConfig() {
     projects: [
       {
         id: "godot_ai",
-        name: "godot_AI (Starter Kit)",
+        name: "Proyek Aktif",
         localPath: REPO_ROOT,
         godotProjectPath: path.join(REPO_ROOT, 'godot_project'),
         repoUrl: detectedRepo
@@ -174,7 +174,7 @@ function loadConfig() {
     } else {
       conf.projects.unshift({
         id: "godot_ai",
-        name: "godot_AI (Starter Kit)",
+        name: "Proyek Aktif",
         localPath: REPO_ROOT,
         godotProjectPath: path.join(REPO_ROOT, 'godot_project'),
         repoUrl: detectedRepo
@@ -672,7 +672,7 @@ const server = http.createServer(async (req, res) => {
           if (config.activeProject === payload.deleteProjectId) {
             const first = config.projects[0] || {
               id: "godot_ai",
-              name: "godot_AI (Starter Kit)",
+              name: "Proyek Aktif",
               localPath: REPO_ROOT,
               godotProjectPath: path.join(REPO_ROOT, 'godot_project'),
               repoUrl: detectRemoteRepoUrl(resolvedGit)
