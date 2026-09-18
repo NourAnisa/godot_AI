@@ -790,7 +790,7 @@ const server = http.createServer(async (req, res) => {
   // CONSOLE LOGS & STREAMING
   if (req.method === 'GET' && parsedUrl.pathname === '/console-logs') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify(consoleLogs));
+    return res.end(JSON.stringify({ logs: consoleLogs }));
   }
 
   if (req.method === 'POST' && parsedUrl.pathname === '/clear-console') {

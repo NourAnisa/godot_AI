@@ -1,9 +1,9 @@
-// Godot AI - Game Dev Assistant v3.0 Pro Studio
+// Godot AI - Game Dev Assistant v3.5 Pro Studio
 // Compatible with ChatGPT, Claude, DeepSeek, Gemini
 
 (function() {
-  if (window.__GODOT_AI_LOADED_V30__) return;
-  window.__GODOT_AI_LOADED_V30__ = true;
+  if (window.__GODOT_AI_LOADED_V35__) return;
+  window.__GODOT_AI_LOADED_V35__ = true;
 
   const DAEMON_URL = 'http://127.0.0.1:32124';
   let isCollapsed = false;
@@ -11,6 +11,7 @@
   let projectContextCache = null;
   let activeConfig = null;
   let isGameRunning = false;
+  let eventSource = null;
 
   // -------------------------------------------------------------
   // Toast Notification
@@ -59,7 +60,7 @@
   }
 
   // -------------------------------------------------------------
-  // SMART FEATURE 1: 1-Click "Apply to Godot" Button on Code Blocks
+  // Code Analysis Helpers (Filename Guess & InputMap Extraction)
   // -------------------------------------------------------------
   function guessFilenameFromCode(code) {
     const pathMatch = code.match(/#\s*(?:res:\/\/|path:\s*|file:\s*)?([A-Za-z0-9_\-\/]+\.(?:gd|tscn|gdshader))/i);
@@ -87,10 +88,46 @@
     if (code.includes('ItemPickup') || code.includes('Area3D')) {
       return 'scripts/item_pickup.gd';
     }
+    if (code.includes('CameraShake') || (code.includes('trauma') && code.includes('h_offset'))) {
+      return 'scripts/camera_shake.gd';
+    }
+    if (code.includes('SaveManager') || code.includes('user://savegame.json')) {
+      return 'scripts/save_manager.gd';
+    }
+    if (code.includes('AudioManager') || code.includes('sfx_pool')) {
+      return 'scripts/audio_manager.gd';
+    }
+    if (code.includes('PauseMenu') || code.includes('toggle_pause')) {
+      return 'scripts/pause_menu.gd';
+    }
 
     return 'scripts/ai_generated_script.gd';
   }
 
+  function extractInputActions(code) {
+    const actions = new Set();
+    const regexes = [
+      /Input\.is_action_just_pressed\(\s*["']([^"']+)["']\s*\)/g,
+      /Input\.is_action_pressed\(\s*["']([^"']+)["']\s*\)/g,
+      /Input\.is_action_just_released\(\s*["']([^"']+)["']\s*\)/g,
+      /Input\.get_axis\(\s*["']([^"']+)["']\s*,\s*["']([^"']+)["']\s*\)/g,
+      /event\.is_action_pressed\(\s*["']([^"']+)["']\s*\)/g,
+      /event\.is_action_released\(\s*["']([^"']+)["']\s*\)/g
+    ];
+
+    for (const reg of regexes) {
+      let m;
+      while ((m = reg.exec(code)) !== null) {
+        if (m[1] && !m[1].startsWith('ui_')) actions.add(m[1]);
+        if (m[2] && !m[2].startsWith('ui_')) actions.add(m[2]);
+      }
+    }
+    return Array.from(actions);
+  }
+
+  // -------------------------------------------------------------
+  // 1-Click "Apply to Godot" & "InputMap Injector" on Code Blocks
+  // -------------------------------------------------------------
   function injectApplyButtonsToCodeBlocks() {
     const codeBlocks = document.querySelectorAll('pre');
     codeBlocks.forEach(pre => {
@@ -100,30 +137,44 @@
       const codeEl = pre.querySelector('code') || pre;
       const codeText = codeEl.innerText || codeEl.textContent || '';
 
-      const isGdscript = codeText.includes('extends ') ||
-                         codeText.includes('func _ready') ||
-                         codeText.includes('func _physics_process') ||
-                         codeText.includes('var ') ||
-                         codeText.includes('CharacterBody') ||
-                         codeText.includes('@export') ||
-                         codeText.includes('shader_type');
+      const isGodotCode = codeText.includes('extends ') ||
+                          codeText.includes('func _ready') ||
+                          codeText.includes('func _physics_process') ||
+                          codeText.includes('var ') ||
+                          codeText.includes('CharacterBody') ||
+                          codeText.includes('@export') ||
+                          codeText.includes('shader_type');
 
-      if (!isGdscript) return;
+      if (!isGodotCode) return;
 
       const guessedFile = guessFilenameFromCode(codeText);
+      const inputActions = extractInputActions(codeText);
 
       const bar = document.createElement('div');
       bar.className = 'gai-code-action-bar';
+      bar.style.gap = '6px';
+
+      let inputBtnHtml = '';
+      if (inputActions.length > 0) {
+        inputBtnHtml = `
+          <button class="gai-input-btn" title="Daftarkan input actions ini otomatis ke project.godot">
+            ⌨️ Daftarkan Input (${inputActions.join(', ')})
+          </button>
+        `;
+      }
+
       bar.innerHTML = `
+        ${inputBtnHtml}
         <button class="gai-apply-btn" title="Simpan kode ini langsung ke folder proyek Godot & Git commit">
           ⚡ Terapkan ke Godot (${guessedFile.split('/').pop()})
         </button>
       `;
 
-      const btn = bar.querySelector('.gai-apply-btn');
-      btn.addEventListener('click', async () => {
-        btn.disabled = true;
-        btn.textContent = '⏳ Menyimpan...';
+      // Apply button handler
+      const btnApply = bar.querySelector('.gai-apply-btn');
+      btnApply.addEventListener('click', async () => {
+        btnApply.disabled = true;
+        btnApply.textContent = '⏳ Menyimpan...';
 
         try {
           const res = await fetch(`${DAEMON_URL}/apply-code`, {
@@ -139,17 +190,46 @@
           if (!res.ok) throw new Error();
           const data = await res.json();
 
-          btn.textContent = `✅ Tersimpan: ${data.file}`;
-          btn.classList.add('applied');
-          showToast(`🎉 Kode berhasil diterapkan ke ${data.file} & di-commit!`);
+          btnApply.textContent = `✅ Tersimpan: ${data.file}`;
+          btnApply.classList.add('applied');
+          const notice = data.sanitized ? ' (GDScript 4 otomatis disesuaikan)' : '';
+          showToast(`🎉 Berhasil diterapkan ke ${data.file}${notice} & di-commit!`);
           updateGitStatus();
           loadGitTimeline();
         } catch {
-          btn.textContent = '❌ Gagal Menyimpan';
-          btn.disabled = false;
+          btnApply.textContent = '❌ Gagal Menyimpan';
+          btnApply.disabled = false;
           showToast('⚠️ Gagal terhubung ke sync daemon port 32124!', true);
         }
       });
+
+      // Input Map button handler
+      if (inputActions.length > 0) {
+        const btnInput = bar.querySelector('.gai-input-btn');
+        btnInput.addEventListener('click', async () => {
+          btnInput.disabled = true;
+          btnInput.textContent = '⏳ Menambahkan...';
+          try {
+            const res = await fetch(`${DAEMON_URL}/inject-inputs`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ actions: inputActions })
+            });
+            const data = await res.json();
+            if (data.success) {
+              btnInput.textContent = `✅ Input Terdaftar (${data.added.length} baru)`;
+              showToast(`🎮 InputMap berhasil didaftarkan: ${inputActions.join(', ')}`);
+            } else {
+              btnInput.textContent = '❌ Gagal';
+              btnInput.disabled = false;
+            }
+          } catch {
+            btnInput.textContent = '❌ Offline';
+            btnInput.disabled = false;
+            showToast('⚠️ Sync daemon belum aktif!', true);
+          }
+        });
+      }
 
       pre.parentNode.insertBefore(bar, pre);
     });
@@ -239,7 +319,182 @@ void fragment() {
   ];
 
   // -------------------------------------------------------------
-  // WIDGET UI CREATION (V3.0 PRO STUDIO)
+  // ESSENTIAL PRODUCTION SYSTEMS PRESETS (V3.5)
+  // -------------------------------------------------------------
+  const SYSTEM_PRESETS = [
+    {
+      id: 'pause_menu',
+      filename: 'scripts/pause_menu.gd',
+      title: '⏸ Menu Jeda & Pengaturan',
+      desc: 'Pause runtime, AudioServer volume slider, Fullscreen toggle, dan Mouse Capture toggle',
+      code: `# res://scripts/pause_menu.gd
+class_name PauseMenu
+extends Control
+
+signal resumed()
+signal quit_requested()
+
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	visible = false
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel"):
+		toggle_pause()
+
+func toggle_pause() -> void:
+	var is_paused = not get_tree().paused
+	get_tree().paused = is_paused
+	visible = is_paused
+	if is_paused:
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	else:
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+		resumed.emit()
+
+func set_master_volume(volume_percent: float) -> void:
+	var bus_idx = AudioServer.get_bus_index("Master")
+	if bus_idx >= 0:
+		var db = linear_to_db(clamp(volume_percent / 100.0, 0.0001, 1.0))
+		AudioServer.set_bus_volume_db(bus_idx, db)
+
+func toggle_fullscreen(enable: bool) -> void:
+	if enable:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+	else:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)`
+    },
+    {
+      id: 'save_manager',
+      filename: 'scripts/save_manager.gd',
+      title: '💾 Save & Load Manager (JSON)',
+      desc: 'Serialisasi data game ke user://savegame.json dengan validasi dan parsing aman',
+      code: `# res://scripts/save_manager.gd
+class_name SaveManager
+extends Node
+
+const SAVE_PATH: String = "user://savegame.json"
+
+signal game_saved()
+signal game_loaded(data: Dictionary)
+
+static func save_data(data: Dictionary) -> bool:
+	var file = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	if not file:
+		push_error("Gagal membuka file penyimpanan: " + str(FileAccess.get_open_error()))
+		return false
+	var json_string = JSON.stringify(data, "\\t")
+	file.store_string(json_string)
+	file.close()
+	print("[SaveManager] Data berhasil disimpan ke " + SAVE_PATH)
+	return true
+
+static func load_data() -> Dictionary:
+	if not FileAccess.file_exists(SAVE_PATH):
+		print("[SaveManager] File save belum ada, mengembalikan dictionary kosong.")
+		return {}
+	var file = FileAccess.open(SAVE_PATH, FileAccess.READ)
+	if not file:
+		return {}
+	var content = file.get_as_text()
+	file.close()
+	var json = JSON.new()
+	var parse_result = json.parse(content)
+	if parse_result != OK:
+		push_error("[SaveManager] Gagal membaca JSON savegame.")
+		return {}
+	return json.data`
+    },
+    {
+      id: 'audio_manager',
+      filename: 'scripts/audio_manager.gd',
+      title: '🎵 3D Audio Manager & SFX Pool',
+      desc: 'BGM crossfade otomatis & object pool 8 channel SFX non-blocking untuk performa optimal',
+      code: `# res://scripts/audio_manager.gd
+class_name AudioManager
+extends Node
+
+var bgm_player: AudioStreamPlayer
+var sfx_pool: Array[AudioStreamPlayer] = []
+const POOL_SIZE: int = 8
+
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	bgm_player = AudioStreamPlayer.new()
+	bgm_player.bus = "Music"
+	add_child(bgm_player)
+
+	for i in range(POOL_SIZE):
+		var p = AudioStreamPlayer.new()
+		p.bus = "SFX"
+		add_child(p)
+		sfx_pool.append(p)
+
+func play_bgm(stream: AudioStream, fade_in_sec: float = 1.0) -> void:
+	if not stream:
+		return
+	if bgm_player.playing:
+		var tween = create_tween()
+		tween.tween_property(bgm_player, "volume_db", -80.0, fade_in_sec)
+		tween.tween_callback(func():
+			bgm_player.stream = stream
+			bgm_player.volume_db = 0.0
+			bgm_player.play()
+		)
+	else:
+		bgm_player.stream = stream
+		bgm_player.volume_db = 0.0
+		bgm_player.play()
+
+func play_sfx(stream: AudioStream, pitch_scale: float = 1.0) -> void:
+	if not stream:
+		return
+	for p in sfx_pool:
+		if not p.playing:
+			p.stream = stream
+			p.pitch_scale = pitch_scale
+			p.play()
+			return
+	sfx_pool[0].stream = stream
+	sfx_pool[0].pitch_scale = pitch_scale
+	sfx_pool[0].play()`
+    },
+    {
+      id: 'camera_shake',
+      filename: 'scripts/camera_shake.gd',
+      title: '📳 Trauma Camera Shake 3D',
+      desc: 'Screen shake berbasis trauma kuadratik untuk impact pukulan, ledakan, dan dash',
+      code: `# res://scripts/camera_shake.gd
+class_name CameraShake
+extends Camera3D
+
+@export var trauma_decay: float = 1.2
+@export var max_offset: Vector2 = Vector2(0.3, 0.3)
+@export var max_roll: float = 0.05
+
+var trauma: float = 0.0
+var time: float = 0.0
+
+func _process(delta: float) -> void:
+	if trauma > 0.0:
+		trauma = max(trauma - trauma_decay * delta, 0.0)
+		time += delta * 30.0
+		var shake_amount = trauma * trauma
+		h_offset = max_offset.x * shake_amount * sin(time * 1.3)
+		v_offset = max_offset.y * shake_amount * cos(time * 1.7)
+		rotation.z = max_roll * shake_amount * sin(time * 0.9)
+	else:
+		h_offset = 0.0
+		v_offset = 0.0
+		rotation.z = 0.0
+
+func add_trauma(amount: float) -> void:
+	trauma = clamp(trauma + amount, 0.0, 1.0)`
+    }
+  ];
+
+  // -------------------------------------------------------------
+  // WIDGET UI CREATION (V3.5 PRO STUDIO)
   // -------------------------------------------------------------
   const widget = document.createElement('div');
   widget.id = 'godot-ai-widget';
@@ -249,7 +504,7 @@ void fragment() {
       <div class="gai-header" id="gai-header">
         <div class="gai-title">
           <span>🎮</span>
-          <span>Godot AI Studio</span>
+          <span>Godot AI Studio v3.5</span>
         </div>
         <div class="gai-runner-controls">
           <button id="gai-btn-play" class="gai-run-btn" title="Jalankan game Godot langsung dari browser">▶ Play</button>
@@ -262,6 +517,8 @@ void fragment() {
         <!-- Navigation Tabs -->
         <div class="gai-tabs">
           <button class="gai-tab active" data-tab="prompts">⚡ Prompts</button>
+          <button class="gai-tab" data-tab="console">📜 Console</button>
+          <button class="gai-tab" data-tab="systems">🧩 Sistem</button>
           <button class="gai-tab" data-tab="tree">🌳 Hierarchy</button>
           <button class="gai-tab" data-tab="shaders">🎨 Shaders</button>
           <button class="gai-tab" data-tab="wizard">🧙 Wizard</button>
@@ -279,6 +536,26 @@ void fragment() {
             <button class="gai-prompt-btn" data-type="daynight">🌅 Siklus Siang-Malam & Langit Prosedural</button>
             <button class="gai-prompt-btn" data-type="dungeon">🏰 Level / Dungeon Blockout Prosedural</button>
             <button class="gai-prompt-btn" data-type="camera">🎥 Kamera Third-Person SpringArm3D</button>
+          </div>
+        </div>
+
+        <!-- TAB: LIVE CONSOLE STREAMER (V3.5) -->
+        <div class="gai-tab-content" id="tab-console" style="display:none;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <span style="font-size:11px; color:#94a3b8;" id="gai-console-status">Live Stream: Menghubungkan...</span>
+            <button id="gai-btn-clear-console" class="gai-tab" style="padding:2px 8px; font-size:10px; background:rgba(255,255,255,0.06);">🧹 Bersihkan</button>
+          </div>
+          <div class="gai-console-container" id="gai-console-logs">
+            <div style="color:#64748b; font-size:11px; padding:6px; text-align:center;">
+              Jalankan game (▶ Play) untuk melihat output konsol realtime di sini.
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: PRODUCTION SYSTEMS PALETTE (V3.5) -->
+        <div class="gai-tab-content" id="tab-systems" style="display:none;">
+          <div class="gai-system-grid" id="gai-system-list">
+            <!-- Rendered by JS -->
           </div>
         </div>
 
@@ -341,7 +618,7 @@ void fragment() {
           </button>
         </div>
 
-        <!-- TAB: GIT SYNC & TIMELINE -->
+        <!-- TAB: GIT SYNC, ROLLBACK & TIMELINE -->
         <div class="gai-tab-content" id="tab-git" style="display:none;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
             <span style="font-size:11px; color:#94a3b8;">Status Git:</span>
@@ -349,9 +626,10 @@ void fragment() {
           </div>
           <div id="gai-git-status-text" style="font-size:11px; color:#cbd5e1; margin-bottom:8px;">Memeriksa daemon...</div>
 
-          <div class="gai-actions" style="margin-bottom:10px;">
+          <div class="gai-actions" style="margin-bottom:8px;">
             <button id="gai-btn-pull" class="gai-btn-pull">⬇️ Pull AI</button>
             <button id="gai-btn-push" class="gai-btn-push">⬆️ Push</button>
+            <button id="gai-btn-rollback" class="gai-btn-rollback" title="Kembalikan file sebelum kode AI terakhir diterapkan">⏮ Rollback Terakhir (.bak)</button>
             <button id="gai-btn-sync" class="gai-btn-sync">🔄 Refresh Status</button>
           </div>
 
@@ -371,6 +649,9 @@ void fragment() {
 
           <label style="font-size:11px; color:#94a3b8; display:block; margin-bottom:2px;">Folder Proyek di Laptop:</label>
           <input type="text" id="gai-inp-local-path" class="gai-select" style="margin-bottom:6px;" />
+
+          <label style="font-size:11px; color:#94a3b8; display:block; margin-bottom:2px;">URL Repository GitHub:</label>
+          <input type="text" id="gai-inp-repo-url" class="gai-select" style="margin-bottom:6px;" />
 
           <label style="font-size:11px; color:#94a3b8; display:block; margin-bottom:2px;">Executable Godot 4 (.exe):</label>
           <div style="display:flex; gap:6px; margin-bottom:8px; align-items:center;">
@@ -412,7 +693,6 @@ void fragment() {
     btnToggle.textContent = isCollapsed ? '+' : '_';
   });
 
-  // Game Runner Logic
   async function updateGameStatus() {
     try {
       const res = await fetch(`${DAEMON_URL}/game-status`);
@@ -501,6 +781,8 @@ void fragment() {
   const tabs = document.querySelectorAll('.gai-tab');
   const tabContents = {
     prompts: document.getElementById('tab-prompts'),
+    console: document.getElementById('tab-console'),
+    systems: document.getElementById('tab-systems'),
     tree: document.getElementById('tab-tree'),
     shaders: document.getElementById('tab-shaders'),
     wizard: document.getElementById('tab-wizard'),
@@ -521,6 +803,8 @@ void fragment() {
       tabContents[target].style.display = 'block';
       activeTab = target;
 
+      if (target === 'console') loadConsoleLogs();
+      if (target === 'systems') renderSystemsPalette();
       if (target === 'tree') loadVisualSceneTree();
       if (target === 'git') loadGitTimeline();
       if (target === 'project') loadProjectConfig();
@@ -574,6 +858,191 @@ void fragment() {
       if (PROMPTS[type]) insertTextToAI(PROMPTS[type]);
     });
   });
+
+  // -------------------------------------------------------------
+  // TAB: LIVE CONSOLE STREAMER (V3.5)
+  // -------------------------------------------------------------
+  const consoleStatus = document.getElementById('gai-console-status');
+  const consoleLogs = document.getElementById('gai-console-logs');
+  const btnClearConsole = document.getElementById('gai-btn-clear-console');
+
+  function appendConsoleLine(entry) {
+    if (!consoleLogs) return;
+
+    const placeholder = consoleLogs.querySelector('div[style*="text-align:center"]');
+    if (placeholder) placeholder.remove();
+
+    const line = document.createElement('div');
+    const isError = entry.type === 'error' || entry.text.toLowerCase().includes('error:') || entry.text.toLowerCase().includes('failed');
+    const isWarn = entry.type === 'warn' || entry.text.toLowerCase().includes('warning:');
+
+    line.className = 'gai-console-line' + (isError ? ' error' : (isWarn ? ' warn' : ''));
+
+    const textSpan = document.createElement('span');
+    textSpan.textContent = `[${entry.time || new Date().toLocaleTimeString()}] ${entry.text}`;
+    line.appendChild(textSpan);
+
+    if (isError) {
+      const fixBtn = document.createElement('button');
+      fixBtn.className = 'gai-console-fix-btn';
+      fixBtn.textContent = '🩺 Perbaiki';
+      fixBtn.title = 'Tanyakan ke AI perbaikan untuk error ini';
+      fixBtn.addEventListener('click', () => {
+        const prompt = `Saya menemukan error berikut saat menjalankan game di Godot Engine 4:
+
+\`\`\`text
+${entry.text}
+\`\`\`
+
+Tolong jelaskan penyebabnya dan berikan kode perbaikan GDScript 4 yang tepat:`;
+        insertTextToAI(prompt);
+      });
+      line.appendChild(fixBtn);
+    }
+
+    consoleLogs.appendChild(line);
+    consoleLogs.scrollTop = consoleLogs.scrollHeight;
+  }
+
+  async function loadConsoleLogs() {
+    try {
+      const res = await fetch(`${DAEMON_URL}/console-logs`);
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      const logs = Array.isArray(data) ? data : (data.logs || []);
+      consoleLogs.innerHTML = '';
+      if (logs.length > 0) {
+        logs.forEach(appendConsoleLine);
+      } else {
+        consoleLogs.innerHTML = '<div style="color:#64748b; font-size:11px; padding:6px; text-align:center;">Belum ada log konsol terbaru. Jalankan game untuk melihat output.</div>';
+      }
+    } catch {
+      consoleLogs.innerHTML = '<div style="color:#f87171; font-size:11px; padding:6px;">Daemon offline.</div>';
+    }
+  }
+
+  btnClearConsole.addEventListener('click', async () => {
+    try {
+      await fetch(`${DAEMON_URL}/clear-console`, { method: 'POST' });
+      consoleLogs.innerHTML = '<div style="color:#64748b; font-size:11px; padding:6px; text-align:center;">Konsol dibersihkan.</div>';
+      showToast('🧹 Output konsol dibersihkan.');
+    } catch {
+      showToast('⚠️ Gagal membersihkan konsol', true);
+    }
+  });
+
+  // Setup Server-Sent Events (SSE) for Real-Time Console Streaming
+  function connectEventSource() {
+    if (eventSource) {
+      try { eventSource.close(); } catch {}
+    }
+
+    try {
+      eventSource = new EventSource(`${DAEMON_URL}/events`);
+      eventSource.onopen = () => {
+        if (consoleStatus) {
+          consoleStatus.textContent = 'Live Stream: Terhubung 🟢';
+          consoleStatus.style.color = '#34d399';
+        }
+      };
+
+      eventSource.addEventListener('console-log', (e) => {
+        try {
+          const entry = JSON.parse(e.data);
+          appendConsoleLine(entry);
+        } catch {}
+      });
+
+      eventSource.onerror = () => {
+        if (consoleStatus) {
+          consoleStatus.textContent = 'Live Stream: Terputus 🔴';
+          consoleStatus.style.color = '#f87171';
+        }
+        eventSource.close();
+        setTimeout(connectEventSource, 4000);
+      };
+    } catch {
+      setTimeout(connectEventSource, 5000);
+    }
+  }
+
+  connectEventSource();
+
+  // -------------------------------------------------------------
+  // TAB: PRODUCTION SYSTEMS PALETTE (V3.5)
+  // -------------------------------------------------------------
+  const systemsContainer = document.getElementById('gai-system-list');
+
+  function renderSystemsPalette() {
+    if (!systemsContainer) return;
+    systemsContainer.innerHTML = SYSTEM_PRESETS.map(sys => `
+      <div class="gai-system-card">
+        <div class="gai-system-info">
+          <div class="gai-system-title">${sys.title}</div>
+          <div class="gai-system-desc">${sys.desc}</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:3px; flex-shrink:0;">
+          <button class="gai-apply-btn" data-system-id="${sys.id}" style="padding:3px 8px; font-size:10px;">
+            ⚡ Pasang
+          </button>
+          <button class="gai-tab" data-ask-system-id="${sys.id}" style="padding:2px 6px; font-size:9.5px; background:rgba(255,255,255,0.06);">
+            💬 Tanya AI
+          </button>
+        </div>
+      </div>
+    `).join('');
+
+    systemsContainer.querySelectorAll('[data-system-id]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.systemId;
+        const system = SYSTEM_PRESETS.find(x => x.id === id);
+        if (!system) return;
+
+        btn.disabled = true;
+        btn.textContent = '⏳ Menulis...';
+
+        try {
+          const res = await fetch(`${DAEMON_URL}/apply-code`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              filename: system.filename,
+              code: system.code,
+              commitMessage: `Install system preset: ${system.filename}`
+            })
+          });
+          const data = await res.json();
+          if (data.success) {
+            btn.textContent = '✅ Terpasang!';
+            showToast(`🎉 Sistem berhasil dipasang ke ${system.filename}!`);
+            updateGitStatus();
+            loadGitTimeline();
+          }
+        } catch {
+          btn.textContent = '❌ Gagal';
+          btn.disabled = false;
+          showToast('⚠️ Gagal terhubung ke daemon!', true);
+        }
+      });
+    });
+
+    systemsContainer.querySelectorAll('[data-ask-system-id]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.askSystemId;
+        const system = SYSTEM_PRESETS.find(x => x.id === id);
+        if (!system) return;
+
+        const prompt = `Saya ingin mengintegrasikan modul sistem "${system.title}" (${system.filename}) ini ke game Godot 4 saya:
+
+\`\`\`gdscript
+${system.code}
+\`\`\`
+
+Tolong beri panduan langkah demi langkah cara memasang node atau Autoload Singleton-nya dan bagaimana cara memanggil fungsinya di scene game saya.`;
+        insertTextToAI(prompt);
+      });
+    });
+  }
 
   // -------------------------------------------------------------
   // TAB: VISUAL SCENE TREE INSPECTOR
@@ -787,11 +1256,12 @@ Tolong bantu selesaikan masalah ini:
   });
 
   // -------------------------------------------------------------
-  // TAB: GIT SYNC & TIMELINE
+  // TAB: GIT SYNC, ROLLBACK & TIMELINE
   // -------------------------------------------------------------
   const gitBadge = document.getElementById('gai-git-badge');
   const gitStatusText = document.getElementById('gai-git-status-text');
   const gitTimeline = document.getElementById('gai-git-timeline');
+  const btnRollback = document.getElementById('gai-btn-rollback');
 
   async function updateGitStatus() {
     try {
@@ -842,6 +1312,27 @@ Tolong bantu selesaikan masalah ini:
       gitTimeline.innerHTML = '<div style="color:#94a3b8; font-size:11px; padding:4px;">Gagal memuat timeline (Daemon offline).</div>';
     }
   }
+
+  btnRollback.addEventListener('click', async () => {
+    btnRollback.disabled = true;
+    btnRollback.textContent = '⏳ Mengembalikan...';
+    try {
+      const res = await fetch(`${DAEMON_URL}/rollback`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`⏮ Berhasil me-rollback file: ${data.file}!`);
+        updateGitStatus();
+        loadGitTimeline();
+      } else {
+        showToast(`⚠️ Rollback gagal: ${data.error || 'Tidak ada backup'}`, true);
+      }
+    } catch {
+      showToast('⚠️ Gagal terhubung ke daemon!', true);
+    } finally {
+      btnRollback.disabled = false;
+      btnRollback.textContent = '⏮ Rollback Terakhir (.bak)';
+    }
+  });
 
   document.getElementById('gai-btn-pull').addEventListener('click', async () => {
     showToast('⏳ Menarik kode dari GitHub...');
@@ -1043,5 +1534,5 @@ Tolong bantu selesaikan masalah ini:
   updateGitStatus();
   updateGameStatus();
 
-  console.log('[Godot AI Studio v3.0 Pro] Initialized successfully.');
+  console.log('[Godot AI Studio v3.5 Pro] Initialized successfully.');
 })();
