@@ -1,14 +1,15 @@
-// Godot AI - Game Dev Assistant v2.0
+// Godot AI - Game Dev Assistant v2.1 (Multi-Project Edition)
 // Compatible with ChatGPT, Claude, DeepSeek, Gemini
 
 (function() {
-  if (window.__GODOT_AI_LOADED_V2__) return;
-  window.__GODOT_AI_LOADED_V2__ = true;
+  if (window.__GODOT_AI_LOADED_V21__) return;
+  window.__GODOT_AI_LOADED_V21__ = true;
 
   const DAEMON_URL = 'http://127.0.0.1:32124';
   let isCollapsed = false;
   let activeTab = 'prompts';
   let projectContextCache = null;
+  let activeConfig = null;
 
   // -------------------------------------------------------------
   // Toast Notification
@@ -164,7 +165,7 @@
       <div class="gai-header" id="gai-header">
         <div class="gai-title">
           <span>⚡</span>
-          <span>Godot AI Assistant</span>
+          <span id="gai-header-proj-name">Godot AI</span>
         </div>
         <div style="display: flex; align-items: center; gap: 6px;">
           <span id="gai-git-badge" class="gai-badge gai-badge-offline">Offline</span>
@@ -178,7 +179,8 @@
           <button class="gai-tab active" data-tab="prompts">📚 Prompt</button>
           <button class="gai-tab" data-tab="context">🧠 Konteks</button>
           <button class="gai-tab" data-tab="wizard">🎮 Wizard</button>
-          <button class="gai-tab" data-tab="debug">🐞 Fix Error</button>
+          <button class="gai-tab" data-tab="project">📂 Proyek</button>
+          <button class="gai-tab" data-tab="debug">🐞 Error</button>
           <button class="gai-tab" data-tab="git">🔄 Git</button>
         </div>
 
@@ -270,7 +272,35 @@
           </div>
         </div>
 
-        <!-- TAB 4: DEBUG ERROR FIXER -->
+        <!-- TAB 4: CHOOSE FOLDER & REPO (PROJECT SETTINGS) -->
+        <div id="gai-tab-project" class="gai-tab-content" style="display: none;">
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div>
+              <label style="font-size: 11px; color: #818cf8; font-weight: 600;">Pilih Proyek Game Aktif:</label>
+              <select id="gai-proj-select" class="gai-select" style="margin-top: 3px;">
+                <option value="godot_ai">godot_AI (Starter Kit)</option>
+                <option value="fading_dawn">fading-dawn-godot</option>
+                <option value="custom">+ Atur Folder Lain</option>
+              </select>
+            </div>
+
+            <div>
+              <label style="font-size: 11px; color: #94a3b8;">Path Folder Lokal Laptop:</label>
+              <input type="text" id="gai-inp-local-path" class="gai-select" style="font-size: 11px; margin-top: 3px;" placeholder="C:\Users\...\FolderGodot" />
+            </div>
+
+            <div>
+              <label style="font-size: 11px; color: #94a3b8;">URL Repository GitHub:</label>
+              <input type="text" id="gai-inp-repo-url" class="gai-select" style="font-size: 11px; margin-top: 3px;" placeholder="https://github.com/Username/repo.git" />
+            </div>
+
+            <button id="gai-btn-save-project" class="gai-btn-primary" style="background: #059669;">
+              💾 Terapkan & Simpan Proyek
+            </button>
+          </div>
+        </div>
+
+        <!-- TAB 5: DEBUG ERROR FIXER -->
         <div id="gai-tab-debug" class="gai-tab-content" style="display: none;">
           <div style="display: flex; flex-direction: column; gap: 6px;">
             <label style="font-size: 11px; color: #94a3b8;">Tempel Pesan Error dari Konsol Godot:</label>
@@ -279,12 +309,12 @@
           </div>
         </div>
 
-        <!-- TAB 5: GIT SYNC -->
+        <!-- TAB 6: GIT SYNC -->
         <div id="gai-tab-git" class="gai-tab-content" style="display: none;">
           <div class="gai-context-box">
             <div class="gai-context-item">
               <span>Repo:</span>
-              <a href="https://github.com/NourAnisa/godot_AI" target="_blank" style="color: #818cf8; text-decoration: none;">NourAnisa/godot_AI</a>
+              <a id="gai-git-repo-link" href="#" target="_blank" style="color: #818cf8; text-decoration: none;">-</a>
             </div>
             <div class="gai-context-item">
               <span>Status:</span>
@@ -300,8 +330,8 @@
       </div>
 
       <div class="gai-footer">
-        <span>Godot AI Assistant v2.0</span>
-        <a href="https://github.com/NourAnisa/godot_AI" target="_blank" style="color: #818cf8; text-decoration: none;">GitHub</a>
+        <span id="gai-footer-proj-info">Folder: godot_AI</span>
+        <a id="gai-footer-github-link" href="https://github.com/NourAnisa/godot_AI" target="_blank" style="color: #818cf8; text-decoration: none;">GitHub</a>
       </div>
     </div>
   `;
@@ -313,7 +343,17 @@
   const btnToggle = document.getElementById('gai-btn-toggle');
   const gitBadge = document.getElementById('gai-git-badge');
   const gitStatusText = document.getElementById('gai-git-status-text');
+  const headerProjName = document.getElementById('gai-header-proj-name');
+  const footerProjInfo = document.getElementById('gai-footer-proj-info');
+  const footerGithubLink = document.getElementById('gai-footer-github-link');
+  const gitRepoLink = document.getElementById('gai-git-repo-link');
   const tabs = document.querySelectorAll('.gai-tab');
+
+  // Project Selection Elements
+  const projSelect = document.getElementById('gai-proj-select');
+  const inpLocalPath = document.getElementById('gai-inp-local-path');
+  const inpRepoUrl = document.getElementById('gai-inp-repo-url');
+  const btnSaveProject = document.getElementById('gai-btn-save-project');
 
   function toggle() {
     isCollapsed = !isCollapsed;
@@ -329,12 +369,13 @@
       tab.classList.add('active');
       activeTab = tab.getAttribute('data-tab');
 
-      ['prompts', 'context', 'wizard', 'debug', 'git'].forEach(t => {
+      ['prompts', 'context', 'wizard', 'project', 'debug', 'git'].forEach(t => {
         const el = document.getElementById(`gai-tab-${t}`);
         if (el) el.style.display = activeTab === t ? 'block' : 'none';
       });
 
       if (activeTab === 'context') loadProjectContext();
+      if (activeTab === 'project') loadProjectConfig();
     });
   });
 
@@ -372,6 +413,99 @@ Tuliskan kodenya secara modular dan bersih.`,
     });
   });
 
+  // -------------------------------------------------------------
+  // SMART TAB: Project Config (Choose Folder & Repo)
+  // -------------------------------------------------------------
+  async function loadProjectConfig() {
+    try {
+      const res = await fetch(`${DAEMON_URL}/config`);
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      activeConfig = data.config;
+
+      inpLocalPath.value = activeConfig.localPath || '';
+      inpRepoUrl.value = activeConfig.repoUrl || '';
+
+      const folderName = (activeConfig.localPath || '').split(/[\\\/]/).filter(Boolean).pop() || 'Godot AI';
+      headerProjName.textContent = folderName;
+      footerProjInfo.textContent = `Folder: ${folderName}`;
+      footerGithubLink.href = activeConfig.repoUrl || '#';
+      gitRepoLink.textContent = (activeConfig.repoUrl || '').replace('.git', '').split('/').slice(-2).join('/');
+      gitRepoLink.href = activeConfig.repoUrl || '#';
+
+      if (data.projects && data.projects.length) {
+        projSelect.innerHTML = '';
+        data.projects.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = p.name;
+          if (p.id === data.activeProject) opt.selected = true;
+          projSelect.appendChild(opt);
+        });
+        const customOpt = document.createElement('option');
+        customOpt.value = 'custom';
+        customOpt.textContent = '+ Atur Folder / Repo Lain';
+        projSelect.appendChild(customOpt);
+      }
+    } catch {}
+  }
+
+  projSelect.addEventListener('change', () => {
+    const val = projSelect.value;
+    if (val === 'custom') {
+      inpLocalPath.value = '';
+      inpRepoUrl.value = '';
+      inpLocalPath.focus();
+      return;
+    }
+    if (activeConfig && activeConfig.projects) {
+      const p = activeConfig.projects.find(x => x.id === val);
+      if (p) {
+        inpLocalPath.value = p.localPath || '';
+        inpRepoUrl.value = p.repoUrl || '';
+      }
+    }
+  });
+
+  btnSaveProject.addEventListener('click', async () => {
+    const localPath = inpLocalPath.value.trim();
+    const repoUrl = inpRepoUrl.value.trim();
+    if (!localPath) {
+      showToast('⚠️ Silakan isi path folder lokal!', true);
+      return;
+    }
+
+    btnSaveProject.disabled = true;
+    btnSaveProject.textContent = 'Menyimpan...';
+
+    try {
+      const folderName = localPath.split(/[\\\/]/).filter(Boolean).pop() || 'MyGame';
+      const res = await fetch(`${DAEMON_URL}/config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ localPath, repoUrl, projectName: folderName })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showToast(`✅ Proyek aktif diganti ke: ${folderName}!`);
+        btnSaveProject.textContent = '✅ Tersimpan!';
+        setTimeout(() => {
+          btnSaveProject.textContent = '💾 Terapkan & Simpan Proyek';
+          btnSaveProject.disabled = false;
+        }, 2000);
+        loadProjectConfig();
+        updateGitStatus();
+      }
+    } catch (e) {
+      showToast('❌ Gagal menyimpan proyek', true);
+      btnSaveProject.disabled = false;
+      btnSaveProject.textContent = '💾 Terapkan & Simpan Proyek';
+    }
+  });
+
+  // -------------------------------------------------------------
+  // SMART TAB: Project Context Loader
+  // -------------------------------------------------------------
   async function loadProjectContext() {
     const projNameEl = document.getElementById('gai-ctx-proj-name');
     const scenesEl = document.getElementById('gai-ctx-scenes-count');
@@ -401,6 +535,9 @@ Tuliskan kodenya secara modular dan bersih.`,
     }
   });
 
+  // -------------------------------------------------------------
+  // SMART TAB: Game Mechanics Wizard
+  // -------------------------------------------------------------
   document.getElementById('gai-btn-generate-wizard').addEventListener('click', () => {
     const genre = document.getElementById('gai-wiz-genre').value;
     const mechanics = [];
@@ -427,6 +564,7 @@ Persyaratan Khusus:
     insertTextToAI(prompt);
   });
 
+  // Debug Error Fixer
   const errorInput = document.getElementById('gai-error-input');
   document.getElementById('gai-btn-fix-error').addEventListener('click', () => {
     const err = errorInput.value.trim();
@@ -494,8 +632,9 @@ Persyaratan Khusus:
   document.getElementById('gai-btn-sync').addEventListener('click', updateGitStatus);
 
   setInterval(injectApplyButtonsToCodeBlocks, 1500);
+  loadProjectConfig();
   updateGitStatus();
   setInterval(updateGitStatus, 10000);
 
-  console.log('[Godot AI v2.0] Loaded.');
+  console.log('[Godot AI v2.1 Multi-Project] Loaded.');
 })();

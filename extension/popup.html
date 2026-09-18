@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <style>
     body {
-      width: 320px;
+      width: 350px;
       margin: 0;
       padding: 16px;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -23,18 +23,31 @@
     .box {
       background: #1e293b;
       border-radius: 8px;
-      padding: 10px;
-      margin-bottom: 12px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
       border: 1px solid rgba(99, 102, 241, 0.2);
     }
     .row {
       display: flex;
       justify-content: space-between;
+      align-items: center;
       margin-bottom: 6px;
       font-size: 12px;
     }
-    .label { color: #94a3b8; }
+    .label { color: #94a3b8; font-size: 11px; }
     .val { font-weight: 600; }
+    .input-field {
+      width: 100%;
+      background: #0f172a;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 6px;
+      color: #f1f5f9;
+      padding: 6px 8px;
+      font-size: 11.5px;
+      box-sizing: border-box;
+      margin-top: 2px;
+      margin-bottom: 8px;
+    }
     .btn {
       width: 100%;
       padding: 8px;
@@ -44,36 +57,58 @@
       color: white;
       font-weight: 600;
       cursor: pointer;
-      margin-top: 6px;
+      margin-top: 5px;
+      transition: all 0.15s;
     }
     .btn:hover { background: #4338ca; }
-    .badge-ok { background: rgba(16, 185, 129, 0.2); color: #34d399; padding: 2px 6px; border-radius: 4px; }
-    .badge-err { background: rgba(239, 68, 68, 0.2); color: #f87171; padding: 2px 6px; border-radius: 4px; }
+    .btn-green { background: #10b981; }
+    .btn-green:hover { background: #059669; }
+    .btn-secondary { background: #334155; }
+    .btn-secondary:hover { background: #475569; }
+    .badge-ok { background: rgba(16, 185, 129, 0.2); color: #34d399; padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+    .badge-err { background: rgba(239, 68, 68, 0.2); color: #f87171; padding: 2px 6px; border-radius: 4px; font-size: 11px; }
     a { color: #818cf8; text-decoration: none; font-size: 11px; }
   </style>
 </head>
 <body>
   <h2>🎮 Godot AI Assistant</h2>
+
+  <!-- Status & Active Project Box -->
   <div class="box">
     <div class="row">
-      <span class="label">Local Daemon:</span>
+      <span class="label">Daemon Local:</span>
       <span id="daemon-badge" class="badge-err">Checking...</span>
     </div>
     <div class="row">
-      <span class="label">Repository:</span>
-      <a href="https://github.com/NourAnisa/godot_AI" target="_blank" class="val">godot_AI</a>
-    </div>
-    <div class="row">
-      <span class="label">Target Proyek:</span>
-      <span style="font-size: 11px; color: #cbd5e1;">godot_AI/godot_project</span>
+      <span class="label">Status Git:</span>
+      <span id="git-status" class="val" style="color: #34d399;">-</span>
     </div>
   </div>
 
-  <button id="btn-pull" class="btn" style="background: #10b981;">⬇️ Pull Kode dari AI</button>
-  <button id="btn-push" class="btn">⬆️ Push Perubahan ke GitHub</button>
-  <button id="btn-refresh" class="btn" style="background: #334155;">🔄 Refresh Status</button>
+  <!-- Folder & Repository Selection -->
+  <div class="box">
+    <label class="label">📂 Pilih Proyek Aktif:</label>
+    <select id="sel-projects" class="input-field" style="background: #1e293b; border-color: rgba(99, 102, 241, 0.4);">
+      <option value="godot_ai">godot_AI (Starter Kit)</option>
+      <option value="fading_dawn">fading-dawn-godot</option>
+      <option value="custom">+ Atur Folder / Repo Lain</option>
+    </select>
 
-  <p style="font-size: 11px; color: #64748b; margin-top: 12px; text-align: center;">
+    <label class="label">Path Folder Lokal di Laptop:</label>
+    <input type="text" id="inp-local-path" class="input-field" placeholder="Contoh: C:\Users\...\MyGodotGame" />
+
+    <label class="label">URL Repository GitHub:</label>
+    <input type="text" id="inp-repo-url" class="input-field" placeholder="https://github.com/Username/repo.git" />
+
+    <button id="btn-save-config" class="btn">💾 Terapkan & Simpan Pengaturan</button>
+  </div>
+
+  <!-- Quick Action Buttons -->
+  <button id="btn-pull" class="btn btn-green">⬇️ Pull Kode dari GitHub</button>
+  <button id="btn-push" class="btn">⬆️ Push Perubahan ke GitHub</button>
+  <button id="btn-refresh" class="btn btn-secondary">🔄 Refresh Status</button>
+
+  <p style="font-size: 10.5px; color: #64748b; margin-top: 10px; text-align: center;">
     Kompatibel dengan ChatGPT, Claude, DeepSeek & Gemini
   </p>
 

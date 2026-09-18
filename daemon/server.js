@@ -14,7 +14,24 @@ function loadConfig() {
     gitPath: "git",
     godotExe: "C:\\Users\\Nor Anisa\\Downloads\\Godot_v4.7.2-stable_win64.exe\\Godot_v4.7.2-stable_win64_console.exe",
     autoSync: true,
-    autoSyncInterval: 10
+    autoSyncInterval: 10,
+    activeProject: "godot_ai",
+    projects: [
+      {
+        id: "godot_ai",
+        name: "godot_AI (Starter Kit)",
+        localPath: "C:\\Users\\Nor Anisa\\godot_AI",
+        godotProjectPath: "C:\\Users\\Nor Anisa\\godot_AI\\godot_project",
+        repoUrl: "https://github.com/NourAnisa/godot_AI.git"
+      },
+      {
+        id: "fading_dawn",
+        name: "fading-dawn-godot",
+        localPath: "C:\\Users\\Nor Anisa\\Downloads\\fadingdowngodot",
+        godotProjectPath: "C:\\Users\\Nor Anisa\\Downloads\\fadingdowngodot",
+        repoUrl: "https://github.com/NourAnisa/fading-dawn-godot.git"
+      }
+    ]
   };
   try {
     if (fs.existsSync(CONFIG_FILE)) {
@@ -34,6 +51,17 @@ if (resolvedGit === 'git' && fs.existsSync(vsGit)) {
   resolvedGit = vsGit;
 }
 
+function resolveGodotProjectDir() {
+  if (fs.existsSync(path.join(config.localPath, 'project.godot'))) {
+    return config.localPath;
+  }
+  const sub = path.join(config.localPath, 'godot_project');
+  if (fs.existsSync(path.join(sub, 'project.godot'))) {
+    return sub;
+  }
+  return config.localPath;
+}
+
 function runGit(args, cwd = config.localPath) {
   return new Promise((resolve) => {
     execFile(resolvedGit, args, { cwd }, (error, stdout, stderr) => {
@@ -49,16 +77,17 @@ function runGit(args, cwd = config.localPath) {
 // SMART FEATURE 1: Scan Godot Project Context (Scenes, Nodes, Scripts)
 // -------------------------------------------------------------
 function getProjectContext() {
-  const projDir = config.godotProjectPath || path.join(config.localPath, 'godot_project');
+  const projDir = resolveGodotProjectDir();
   const context = {
-    projectName: "Godot AI Project",
+    projectName: path.basename(projDir),
+    projectPath: projDir,
     mainScene: "",
     scenes: [],
     scripts: []
   };
 
   if (!fs.existsSync(projDir)) {
-    return { error: "godot_project folder not found at " + projDir };
+    return { error: "Folder proyek tidak ditemukan di " + projDir };
   }
 
   // 1. Parse project.godot
@@ -71,46 +100,66 @@ function getProjectContext() {
     if (sceneMatch) context.mainScene = sceneMatch[1];
   }
 
-  // 2. Scan scenes (*.tscn)
-  const scenesDir = path.join(projDir, 'scenes');
-  if (fs.existsSync(scenesDir)) {
-    const files = fs.readdirSync(scenesDir).filter(f => f.endsWith('.tscn'));
-    for (const f of files) {
-      const fullPath = path.join(scenesDir, f);
-      const content = fs.readFileSync(fullPath, 'utf8');
-      const nodeMatches = [...content.matchAll(/\[node name="([^"]+)" type="([^"]+)"/g)];
-      const nodes = nodeMatches.map(m => ({ name: m[1], type: m[2] }));
-      context.scenes.push({ file: `res://scenes/${f}`, nodes });
+  // 2. Scan scenes recursively (*.tscn)
+  function scanScenes(dir, rel = '') {
+    if (!fs.existsSync(dir)) return;
+    const items = fs.readdirSync(dir);
+    for (const item of items) {
+      if (item === '.godot' || item === '.git') continue;
+      const full = path.join(dir, item);
+      const stat = fs.statSync(full);
+      if (stat.isDirectory()) {
+        scanScenes(full, path.join(rel, item));
+      } else if (item.endsWith('.tscn')) {
+        try {
+          const content = fs.readFileSync(full, 'utf8');
+          const nodeMatches = [...content.matchAll(/\[node name="([^"]+)" type="([^"]+)"/g)];
+          const nodes = nodeMatches.map(m => ({ name: m[1], type: m[2] }));
+          const relPath = path.join(rel, item).replace(/\\/g, '/');
+          context.scenes.push({ file: `res://${relPath}`, nodes });
+        } catch {}
+      }
     }
   }
 
-  // 3. Scan scripts (*.gd)
-  const scriptsDir = path.join(projDir, 'scripts');
-  if (fs.existsSync(scriptsDir)) {
-    const files = fs.readdirSync(scriptsDir).filter(f => f.endsWith('.gd'));
-    for (const f of files) {
-      const fullPath = path.join(scriptsDir, f);
-      const content = fs.readFileSync(fullPath, 'utf8');
-      
-      const classMatch = content.match(/class_name\s+([A-Za-z0-9_]+)/);
-      const extendsMatch = content.match(/extends\s+([A-Za-z0-9_"]+)/);
-      const exportMatches = [...content.matchAll(/@export(?:\([^\)]*\))?\s+var\s+([A-Za-z0-9_]+)\s*:\s*([A-Za-z0-9_]+)/g)];
-      const signalMatches = [...content.matchAll(/signal\s+([A-Za-z0-9_]+)/g)];
+  // 3. Scan scripts recursively (*.gd)
+  function scanScripts(dir, rel = '') {
+    if (!fs.existsSync(dir)) return;
+    const items = fs.readdirSync(dir);
+    for (const item of items) {
+      if (item === '.godot' || item === '.git') continue;
+      const full = path.join(dir, item);
+      const stat = fs.statSync(full);
+      if (stat.isDirectory()) {
+        scanScripts(full, path.join(rel, item));
+      } else if (item.endsWith('.gd')) {
+        try {
+          const content = fs.readFileSync(full, 'utf8');
+          const classMatch = content.match(/class_name\s+([A-Za-z0-9_]+)/);
+          const extendsMatch = content.match(/extends\s+([A-Za-z0-9_"]+)/);
+          const exportMatches = [...content.matchAll(/@export(?:\([^\)]*\))?\s+var\s+([A-Za-z0-9_]+)\s*:\s*([A-Za-z0-9_]+)/g)];
+          const signalMatches = [...content.matchAll(/signal\s+([A-Za-z0-9_]+)/g)];
 
-      context.scripts.push({
-        file: `res://scripts/${f}`,
-        className: classMatch ? classMatch[1] : null,
-        extends: extendsMatch ? extendsMatch[1] : 'Node',
-        exportedVars: exportMatches.map(m => `${m[1]}: ${m[2]}`),
-        signals: signalMatches.map(m => m[1])
-      });
+          const relPath = path.join(rel, item).replace(/\\/g, '/');
+          context.scripts.push({
+            file: `res://${relPath}`,
+            className: classMatch ? classMatch[1] : null,
+            extends: extendsMatch ? extendsMatch[1] : 'Node',
+            exportedVars: exportMatches.map(m => `${m[1]}: ${m[2]}`),
+            signals: signalMatches.map(m => m[1])
+          });
+        } catch {}
+      }
     }
   }
+
+  scanScenes(projDir);
+  scanScripts(projDir);
 
   // Pre-generate prompt markdown
   let promptText = `[KONTEKS PROYEK GODOT 4]\n`;
   promptText += `Nama Proyek: ${context.projectName}\n`;
-  promptText += `Main Scene: ${context.mainScene || 'res://scenes/main.tscn'}\n\n`;
+  promptText += `Main Scene: ${context.mainScene || 'res://main.tscn'}\n\n`;
 
   promptText += `Daftar Scene & Node yang ada:\n`;
   for (const s of context.scenes) {
@@ -133,7 +182,7 @@ function getProjectContext() {
 // SMART FEATURE 2: 1-Click Apply Code to Godot Project
 // -------------------------------------------------------------
 async function applyCodeToFile(filename, code, commitMsg) {
-  const projDir = config.godotProjectPath || path.join(config.localPath, 'godot_project');
+  const projDir = resolveGodotProjectDir();
   let cleanFilename = filename.replace(/^res:\/\//, '').replace(/^[\\\/]+/, '');
   if (!cleanFilename.endsWith('.gd') && !cleanFilename.endsWith('.tscn')) {
     cleanFilename += '.gd';
@@ -149,7 +198,6 @@ async function applyCodeToFile(filename, code, commitMsg) {
     fs.mkdirSync(targetDir, { recursive: true });
   }
 
-  // Remove potential UTF-8 BOM or markdown backtick wrappers
   let cleanCode = code.trim();
   if (cleanCode.startsWith('```gdscript') || cleanCode.startsWith('```python') || cleanCode.startsWith('```')) {
     cleanCode = cleanCode.replace(/^```[a-z0-9_-]*\r?\n/, '').replace(/\r?\n```$/, '');
@@ -157,7 +205,6 @@ async function applyCodeToFile(filename, code, commitMsg) {
 
   fs.writeFileSync(targetPath, cleanCode, { encoding: 'utf8' });
 
-  // Auto commit & push if git is ready
   const msg = commitMsg || `Apply AI code to ${cleanFilename} via Godot AI Assistant`;
   await runGit(['add', '.']);
   await runGit(['commit', '-m', msg]);
@@ -171,7 +218,6 @@ async function applyCodeToFile(filename, code, commitMsg) {
   };
 }
 
-// SSE Clients
 const sseClients = new Set();
 function broadcast(event, data) {
   const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
@@ -211,7 +257,10 @@ async function getStatus() {
 
   return {
     localPath: config.localPath,
+    godotProjectPath: resolveGodotProjectDir(),
     repoUrl: config.repoUrl,
+    activeProject: config.activeProject,
+    projects: config.projects || [],
     synced: behind === 0 && ahead === 0,
     behind,
     ahead,
@@ -292,10 +341,74 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'GET' && (parsedUrl.pathname === '/' || parsedUrl.pathname === '/health')) {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify({ ok: true, name: "Godot-AI-Smart-Daemon", version: "2.0.0" }));
+    return res.end(JSON.stringify({ ok: true, name: "Godot-AI-Smart-Daemon", version: "2.1.0" }));
   }
 
-  // SMART ENDPOINT: Get Project Architecture Context
+  // CONFIGURATION ENDPOINTS (Choose Folder & Repo)
+  if (req.method === 'GET' && parsedUrl.pathname === '/config') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({
+      config,
+      activeProject: config.activeProject,
+      projects: config.projects || []
+    }));
+  }
+
+  if (req.method === 'POST' && parsedUrl.pathname === '/config') {
+    let body = '';
+    req.on('data', c => { body += c; });
+    req.on('end', async () => {
+      try {
+        const payload = JSON.parse(body);
+
+        // 1. Switch existing preset project
+        if (payload.switchProjectId && Array.isArray(config.projects)) {
+          const found = config.projects.find(p => p.id === payload.switchProjectId);
+          if (found) {
+            config.activeProject = found.id;
+            config.localPath = found.localPath;
+            config.repoUrl = found.repoUrl;
+            config.godotProjectPath = found.godotProjectPath || found.localPath;
+          }
+        }
+
+        // 2. Custom folder / repo URL
+        if (payload.localPath) config.localPath = payload.localPath.trim();
+        if (payload.repoUrl) config.repoUrl = payload.repoUrl.trim();
+        if (payload.projectName) {
+          const id = payload.projectName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+          if (!config.projects) config.projects = [];
+          const idx = config.projects.findIndex(p => p.id === id || p.localPath === config.localPath);
+          const projectEntry = {
+            id,
+            name: payload.projectName,
+            localPath: config.localPath,
+            repoUrl: config.repoUrl,
+            godotProjectPath: resolveGodotProjectDir()
+          };
+          if (idx >= 0) {
+            config.projects[idx] = projectEntry;
+          } else {
+            config.projects.push(projectEntry);
+          }
+          config.activeProject = id;
+        }
+
+        fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf8');
+        startAutoSync();
+        const status = await getStatus();
+        broadcast('status', status);
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ ok: true, config, status }));
+      } catch (e) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
+  }
+
   if (req.method === 'GET' && parsedUrl.pathname === '/project-context') {
     try {
       const ctx = getProjectContext();
@@ -307,7 +420,6 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  // SMART ENDPOINT: Apply Code directly to Godot file
   if (req.method === 'POST' && parsedUrl.pathname === '/apply-code') {
     let body = '';
     req.on('data', c => { body += c; });
@@ -371,7 +483,7 @@ const server = http.createServer(async (req, res) => {
 
 const PORT = config.port || 32124;
 server.listen(PORT, '127.0.0.1', () => {
-  console.log(`[Godot AI Smart Daemon v2] Berjalan di http://127.0.0.1:${PORT}`);
+  console.log(`[Godot AI Smart Daemon v2.1] Berjalan di http://127.0.0.1:${PORT}`);
   console.log(`Folder Proyek: ${config.localPath}`);
   console.log(`Remote:        ${config.repoUrl}`);
 });
