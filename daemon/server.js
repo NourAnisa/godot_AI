@@ -9,8 +9,10 @@ function loadConfig() {
   const defaults = {
     port: 32124,
     localPath: "C:\\Users\\Nor Anisa\\godot_AI",
+    godotProjectPath: "C:\\Users\\Nor Anisa\\godot_AI\\godot_project",
     repoUrl: "https://github.com/NourAnisa/godot_AI.git",
     gitPath: "git",
+    godotExe: "C:\\Users\\Nor Anisa\\Downloads\\Godot_v4.7.2-stable_win64.exe\\Godot_v4.7.2-stable_win64_console.exe",
     autoSync: true,
     autoSyncInterval: 10
   };
@@ -43,6 +45,133 @@ function runGit(args, cwd = config.localPath) {
   });
 }
 
+// -------------------------------------------------------------
+// SMART FEATURE 1: Scan Godot Project Context (Scenes, Nodes, Scripts)
+// -------------------------------------------------------------
+function getProjectContext() {
+  const projDir = config.godotProjectPath || path.join(config.localPath, 'godot_project');
+  const context = {
+    projectName: "Godot AI Project",
+    mainScene: "",
+    scenes: [],
+    scripts: []
+  };
+
+  if (!fs.existsSync(projDir)) {
+    return { error: "godot_project folder not found at " + projDir };
+  }
+
+  // 1. Parse project.godot
+  const projGodotPath = path.join(projDir, 'project.godot');
+  if (fs.existsSync(projGodotPath)) {
+    const content = fs.readFileSync(projGodotPath, 'utf8');
+    const nameMatch = content.match(/config\/name="([^"]+)"/);
+    if (nameMatch) context.projectName = nameMatch[1];
+    const sceneMatch = content.match(/run\/main_scene="([^"]+)"/);
+    if (sceneMatch) context.mainScene = sceneMatch[1];
+  }
+
+  // 2. Scan scenes (*.tscn)
+  const scenesDir = path.join(projDir, 'scenes');
+  if (fs.existsSync(scenesDir)) {
+    const files = fs.readdirSync(scenesDir).filter(f => f.endsWith('.tscn'));
+    for (const f of files) {
+      const fullPath = path.join(scenesDir, f);
+      const content = fs.readFileSync(fullPath, 'utf8');
+      const nodeMatches = [...content.matchAll(/\[node name="([^"]+)" type="([^"]+)"/g)];
+      const nodes = nodeMatches.map(m => ({ name: m[1], type: m[2] }));
+      context.scenes.push({ file: `res://scenes/${f}`, nodes });
+    }
+  }
+
+  // 3. Scan scripts (*.gd)
+  const scriptsDir = path.join(projDir, 'scripts');
+  if (fs.existsSync(scriptsDir)) {
+    const files = fs.readdirSync(scriptsDir).filter(f => f.endsWith('.gd'));
+    for (const f of files) {
+      const fullPath = path.join(scriptsDir, f);
+      const content = fs.readFileSync(fullPath, 'utf8');
+      
+      const classMatch = content.match(/class_name\s+([A-Za-z0-9_]+)/);
+      const extendsMatch = content.match(/extends\s+([A-Za-z0-9_"]+)/);
+      const exportMatches = [...content.matchAll(/@export(?:\([^\)]*\))?\s+var\s+([A-Za-z0-9_]+)\s*:\s*([A-Za-z0-9_]+)/g)];
+      const signalMatches = [...content.matchAll(/signal\s+([A-Za-z0-9_]+)/g)];
+
+      context.scripts.push({
+        file: `res://scripts/${f}`,
+        className: classMatch ? classMatch[1] : null,
+        extends: extendsMatch ? extendsMatch[1] : 'Node',
+        exportedVars: exportMatches.map(m => `${m[1]}: ${m[2]}`),
+        signals: signalMatches.map(m => m[1])
+      });
+    }
+  }
+
+  // Pre-generate prompt markdown
+  let promptText = `[KONTEKS PROYEK GODOT 4 MAHASISWA]\n`;
+  promptText += `Nama Proyek: ${context.projectName}\n`;
+  promptText += `Main Scene: ${context.mainScene || 'res://scenes/main.tscn'}\n\n`;
+
+  promptText += `Daftar Scene & Node yang ada:\n`;
+  for (const s of context.scenes) {
+    promptText += `- ${s.file} (Node: ${s.nodes.map(n => `${n.name} [${n.type}]`).join(', ') || 'Root'})\n`;
+  }
+
+  promptText += `\nDaftar Script & Variabel yang sudah ada:\n`;
+  for (const sc of context.scripts) {
+    promptText += `- ${sc.file} (Class: ${sc.className || 'None'}, Extends: ${sc.extends})\n`;
+    if (sc.exportedVars.length) promptText += `  Variabel: ${sc.exportedVars.join(', ')}\n`;
+    if (sc.signals.length) promptText += `  Signals: ${sc.signals.join(', ')}\n`;
+  }
+  promptText += `\nInstruksi untuk AI: Mohon berikan kode GDScript yang kompatibel dan sesuai dengan nama node serta variabel yang sudah ada di atas.`;
+
+  context.formattedPrompt = promptText;
+  return context;
+}
+
+// -------------------------------------------------------------
+// SMART FEATURE 2: 1-Click Apply Code to Godot Project
+// -------------------------------------------------------------
+async function applyCodeToFile(filename, code, commitMsg) {
+  const projDir = config.godotProjectPath || path.join(config.localPath, 'godot_project');
+  let cleanFilename = filename.replace(/^res:\/\//, '').replace(/^[\\\/]+/, '');
+  if (!cleanFilename.endsWith('.gd') && !cleanFilename.endsWith('.tscn')) {
+    cleanFilename += '.gd';
+  }
+  if (!cleanFilename.includes('/') && !cleanFilename.includes('\\')) {
+    cleanFilename = path.join('scripts', cleanFilename);
+  }
+
+  const targetPath = path.join(projDir, cleanFilename);
+  const targetDir = path.dirname(targetPath);
+
+  if (!fs.existsSync(targetDir)) {
+    fs.mkdirSync(targetDir, { recursive: true });
+  }
+
+  // Remove potential UTF-8 BOM or markdown backtick wrappers
+  let cleanCode = code.trim();
+  if (cleanCode.startsWith('```gdscript') || cleanCode.startsWith('```python') || cleanCode.startsWith('```')) {
+    cleanCode = cleanCode.replace(/^```[a-z0-9_-]*\r?\n/, '').replace(/\r?\n```$/, '');
+  }
+
+  fs.writeFileSync(targetPath, cleanCode, { encoding: 'utf8' });
+
+  // Auto commit & push if git is ready
+  const msg = commitMsg || `Apply AI code to ${cleanFilename} via Godot AI Assistant`;
+  await runGit(['add', '.']);
+  await runGit(['commit', '-m', msg]);
+  runGit(['push', 'origin', 'main']).catch(() => {});
+
+  return {
+    success: true,
+    file: `res://${cleanFilename.replace(/\\/g, '/')}`,
+    localPath: targetPath,
+    bytesWritten: Buffer.byteLength(cleanCode, 'utf8')
+  };
+}
+
+// SSE Clients
 const sseClients = new Set();
 function broadcast(event, data) {
   const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
@@ -163,7 +292,38 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'GET' && (parsedUrl.pathname === '/' || parsedUrl.pathname === '/health')) {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify({ ok: true, name: "Godot-AI-Student-Daemon", version: "1.0.0" }));
+    return res.end(JSON.stringify({ ok: true, name: "Godot-AI-Smart-Daemon", version: "2.0.0" }));
+  }
+
+  // SMART ENDPOINT: Get Project Architecture Context
+  if (req.method === 'GET' && parsedUrl.pathname === '/project-context') {
+    try {
+      const ctx = getProjectContext();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify(ctx));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: e.message }));
+    }
+  }
+
+  // SMART ENDPOINT: Apply Code directly to Godot file
+  if (req.method === 'POST' && parsedUrl.pathname === '/apply-code') {
+    let body = '';
+    req.on('data', c => { body += c; });
+    req.on('end', async () => {
+      try {
+        const payload = JSON.parse(body);
+        if (!payload.code) throw new Error("Field 'code' is required.");
+        const result = await applyCodeToFile(payload.filename || 'scripts/generated_script.gd', payload.code, payload.commitMessage);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify(result));
+      } catch (e) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
   }
 
   if (req.method === 'GET' && parsedUrl.pathname === '/status') {
@@ -211,7 +371,7 @@ const server = http.createServer(async (req, res) => {
 
 const PORT = config.port || 32124;
 server.listen(PORT, '127.0.0.1', () => {
-  console.log(`[Godot AI Mahasiswa Daemon] Berjalan di http://127.0.0.1:${PORT}`);
-  console.log(`Folder: ${config.localPath}`);
-  console.log(`Remote: ${config.repoUrl}`);
+  console.log(`[Godot AI Smart Daemon v2] Berjalan di http://127.0.0.1:${PORT}`);
+  console.log(`Folder Proyek: ${config.localPath}`);
+  console.log(`Remote:        ${config.repoUrl}`);
 });
